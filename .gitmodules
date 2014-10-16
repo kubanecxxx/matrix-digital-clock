@@ -1,3 +1,0 @@
-[submodule "fw/matrix_digital_clock/library"]
-	path = fw/matrix_digital_clock/library
-	url = git@github.com:kubanecxxx/library.git

@@ -118,18 +118,18 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
                   
 #LIBRARIES = $(HOME)/elektronika/projekty/matrix-digital-clock/fw/matrix_digital_clock/library
 #multi library configuration
-LIBRARIES = ./library
+LIBRARIES = ../../../library
 USE_SCHEDULER = yes
 USE_RF24_CALLBACKS = yes
 USE_FONTS = yes
 
 include $(LIBRARIES)/rules.mk
+include $(LIBRARIES)/../config/rules.mk
 
+#_MOJE = $(HOME)/elektronika/homeAutomation/config
+#INCDIR += $(_MOJE)
          
-_MOJE = $(HOME)/elektronika/homeAutomation/config
-INCDIR += $(_MOJE)
-         
-CSRC += $(CFILES) $(_MOJE)/table_conf.c
+CSRC += $(CFILES) #$(_MOJE)/table_conf.c
 CPPSRC += $(CPPFILES) main.cpp wireless/wireless.cpp
 
 #
