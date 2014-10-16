@@ -117,8 +117,15 @@ INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(CHIBIOS)/os/various wireless
                   
 #LIBRARIES = $(HOME)/elektronika/projekty/matrix-digital-clock/fw/matrix_digital_clock/library
+#multi library configuration
 LIBRARIES = ./library
-include $(LIBRARIES)/rules.mk         
+USE_SCHEDULER = yes
+USE_RF24_CALLBACKS = yes
+USE_FONTS = yes
+
+include $(LIBRARIES)/rules.mk
+
+         
 _MOJE = $(HOME)/elektronika/homeAutomation/config
 INCDIR += $(_MOJE)
          
