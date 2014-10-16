@@ -29,6 +29,8 @@ struct matrix_config_t
 	SPIDriver * spi;
 	GPTDriver * timer;
 	const matrix_gpio_t * gpio;
+	PWMDriver * pwm;
+	uint8_t pwmChannel;
 };
 
 /* Exported constants --------------------------------------------------------*/
@@ -48,9 +50,10 @@ void matrix_stop(void);
 void matrix_demo(void);
 
 void matrix_clear_screen(void);
-void matrix_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright);
+//void matrix_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright);
 void matrix_put_bitmap(const uint16_t * data);
-void matrix_put_line(const uint16_t * data, uint8_t row,uint8_t bright);
+//void matrix_put_line(const uint16_t * data, uint8_t row,uint8_t bright);
+void matrix_pwm_set_period(uint16_t percent);
 
 
 #ifdef __cplusplus

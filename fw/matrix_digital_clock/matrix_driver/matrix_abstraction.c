@@ -15,16 +15,45 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#define DISPLAY_HEIGHT 16
+
+//x coordination offset for nighttime
+#define NIGHT_OFFSET 2
+
+#define ma_animated_character_animation(c,_animation) {if (c->animation != _animation) \
+	{c->animation = _animation; c->counter = 16;}}
+#define ma_setup_animated_character(character_number,_animation,_character,_x,_y,_size,_brightness) \
+		{time[character_number].animation = _animation; time[character_number].character = _character; \
+		time[character_number].x = _x; time[character_number].y = _y; time[character_number].font = _size; \
+		time[character_number].brightness = _brightness;}
+#define ma_putchar_animated_number(character_number) {ma_putchar_animated(&time[character_number]);}
+
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static uint16_t buffer[MATRIX_ARRAY_COLS][MATRIX_ROWS][MATRIX_BRIGHT];
+static animated_character_t time[ANIMATED_CHARS_COUNT];
+static function_t func = DAY_TIME;
+
+static const uint8_t font_sizes[] =
+{ 8, 16, 16, 4 };
 
 /* Private function prototypes -----------------------------------------------*/
+static void ma_clear_screen(void);
+static void ma_putchar_animated(animated_character_t * data);
+static void ma_putchar_struct(const animated_character_t * c);
+static void ma_putchar(char c, uint16_t x, uint16_t y, uint8_t size,
+		uint8_t brightness);
+
 /* Private functions ---------------------------------------------------------*/
+inline uint8_t ma_font_size(fonts_t font)
+{
+	chDbgAssert(font < P_LAST, "font out of scope", 0);
+	return font_sizes[font];
+}
 
-animated_character_t time[6];
-
-void ma_dayTime_loop(void)
+void ma_time_loop(uint8_t day)
 {
 	RTCTime t;
 	rtcGetTime(&RTCD1, &t);
@@ -56,19 +85,116 @@ void ma_dayTime_loop(void)
 
 	c = time;
 	int i;
-	for (i = 0; i < 6; i++)
+	if (day)
 	{
-		ma_putchar_animated(c++);
+		for (i = 0; i < 6; i++)
+		{
+
+			if (i == C_SECONDS_ONES)
+			{
+
+				ma_animated_character_animation(c, FADE);
+			}
+			else
+			{
+				ma_animated_character_animation(c, SLIDE_DOWN);
+
+			}
+			c->font = P_16;
+			c->y = 1;
+			//c->x = 14 * i + (!(i & 1))* 2 - 3;
+			c->x = 10 * i;
+
+			c->brightness = 7;
+			ma_putchar_animated(c++);
+		}
 	}
+	else
+	{
+		c = time + C_MINUTES_ONES;
+		temp = 0;
+		for (i = 0; i < 4; i++)
+		{
+			//c->animation = FADE;
+			ma_animated_character_animation(c, FADE);
+			c->font = P_16;
+			c->y = 1;
+			if (i > 1)
+				temp = 6;
+			c->x = temp + (13 * i) + NIGHT_OFFSET;
+
+			c->brightness = 7;
+			ma_putchar_animated(c++);
+
+		}
+
+		if (sec & 1)
+			temp = ':';
+		else
+			temp = ' ';
+
+		ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, NIGHT_OFFSET+23,
+				0, 16, 7);
+		ma_putchar_animated_number(C_DOUBLE_DOT1);
+	}
+}
+
+static uint8_t mode_change_sequence = 0;
+
+void ma_select_function(function_t f)
+{
+	func = f;
+	mode_change_sequence = 0;
 }
 
 void ma_cb(arg_t b)
 {
+	(void) b;
+	static function_t old_f;
+	static uint16_t work_bright = 0;
+	static uint16_t brightness = 4000;
+	static uint16_t brightness_backup;
+
+#define BRIGHTNESS_STEP 4
+
+	if (mode_change_sequence == 0)
+	{
+		//slow fadeout and fade in
+		//fade out
+		brightness_backup = brightness;
+		brightness = 0;
+		mode_change_sequence = 1;
+	}
+	else if (mode_change_sequence
+			== 1&& work_bright < 10 && chTimeNow() > MS2ST(1000))
+	{
+		//fade in
+		old_f = func;
+		brightness = brightness_backup;
+		mode_change_sequence = 2;
+	}
+
+	if (work_bright != brightness)
+	{
+		if (work_bright > brightness)
+			work_bright -= BRIGHTNESS_STEP;
+		if (work_bright < brightness)
+			work_bright += BRIGHTNESS_STEP;
+
+		matrix_pwm_set_period(work_bright);
+	}
+
 	ma_clear_screen();
-	ma_dayTime_loop();
+	ma_putchar_animated(ma_get_character(C_LED));
 
-	matrix_put_bitmap(buffer);
+	 if (old_f == DAY_TIME)
+	 ma_time_loop(1);
+	 else if (old_f == NIGHT_TIME)
+	 ma_time_loop(0);
 
+
+//memset(buffer, 0xff, MATRIX_ARRAY_COLS * MATRIX_ROWS * 2 * MATRIX_BRIGHT);
+	matrix_put_bitmap((uint16_t *) buffer);
 }
 
 void ma_init(void)
@@ -79,10 +205,10 @@ void ma_init(void)
 
 	animated_character_t * c = time;
 	int i;
-	for (i = 0; i < 6; i++)
+	for (i = 0; i < ANIMATED_CHARS_COUNT; i++)
 	{
 		c->animation = SLIDE_DOWN;
-		c->size = 16;
+		c->font = P_16;
 		c->y = 1;
 		//c->x = 14 * i + (!(i & 1))* 2 - 3;
 		c->x = 10 * i;
@@ -92,6 +218,8 @@ void ma_init(void)
 		c++;
 	}
 	time[0].animation = FADE;
+
+//matrix_pwm_set_period(brightness);
 }
 
 void ma_clear_screen(void)
@@ -99,65 +227,58 @@ void ma_clear_screen(void)
 	memset(buffer, 0, MATRIX_ARRAY_COLS * MATRIX_ROWS * 2 * MATRIX_BRIGHT);
 }
 
-void ma_demo(void)
-{
-}
-
-void ma_time()
-{
-
-}
-
 void ma_putchar_animated(animated_character_t * data)
 {
+	uint8_t sze = ma_font_size(data->font);
+	int8_t b, c;
 	if (data->animation == FADE)
 	{
-		if (data->counter < 16)
+		if (data->counter < DISPLAY_HEIGHT)
 		{
 
-			ma_putchar(data->character, data->x, data->y, data->size,
-					data->counter/2);
-			ma_putchar(data->old_character, data->x, data->y, data->size,
-					7 - data->counter/2);
+			ma_putchar(data->character, data->x, data->y, data->font,
+					data->counter / 2);
+			ma_putchar(data->old_character, data->x, data->y, data->font,
+					7 - data->counter / 2);
 			data->counter++;
 		}
 
 		if (data->character != data->old_character_changed)
 		{
 			ma_putchar(data->old_character_changed, data->x, data->y,
-					data->size, data->brightness);
+					data->font, data->brightness);
 			data->old_character = data->old_character_changed;
 			data->old_character_changed = data->character;
 			data->counter = 0;
 		}
-		if (data->counter >= 16)
+		if (data->counter >= DISPLAY_HEIGHT)
 		{
 			ma_putchar_struct(data);
 		}
 	}
 	else if (data->animation == SLIDE_DOWN)
 	{
-		if (data->counter < 1)
+		if (data->counter < DISPLAY_HEIGHT)
 		{
-
-			ma_putchar(data->character, data->x, data->y + data->counter,
-					data->size, data->brightness);
-			ma_putchar(data->old_character, data->x,
-					data->y + data->size + data->counter, data->size,
+			c = MIN(data->counter, sze);
+			ma_putchar(data->character, data->x, data->y + c - sze, data->font,
 					data->brightness);
+			if (data->counter < sze)
+				ma_putchar(data->old_character, data->x, data->y + c,
+						data->font, data->brightness);
 			data->counter++;
 		}
 
 		if (data->character != data->old_character_changed)
 		{
 			ma_putchar(data->old_character_changed, data->x, data->y,
-					data->size, data->brightness);
+					data->font, data->brightness);
 			data->old_character = data->old_character_changed;
 			data->old_character_changed = data->character;
-			data->counter = -16;
+			data->counter = 0;
 		}
 
-		if (data->counter >= 0)
+		if (data->counter >= DISPLAY_HEIGHT)
 		{
 			ma_putchar_struct(data);
 		}
@@ -170,22 +291,35 @@ void ma_putchar_animated(animated_character_t * data)
 
 void ma_putchar_struct(const animated_character_t * c)
 {
-	ma_putchar(c->character, c->x, c->y, c->size, c->brightness);
+	ma_putchar(c->character, c->x, c->y, c->font, c->brightness);
 }
 
-void ma_putchar(char c, uint16_t x, uint16_t y, uint8_t size,
+static const uint8_t led_table[4][4] =
+{
+{ 0, 0, 0, 0 },
+{ 0x1, 0x3, 0x7, 0xf },
+{ 0xf, 0x7, 0x3, 0x1 }, };
+
+void ma_putchar(char c, uint16_t x, uint16_t y, uint8_t font,
 		uint8_t brightness)
 {
 	chDbgAssert(brightness < 8, "brightness out of scope", 0);
-	const uint8_t * d = Fonts_GetChar(c, 16);
+
+	uint8_t width = ma_font_size(font);
+	uint8_t height = width;
+	const uint8_t * d;
+	if (font != P_LED)
+		d = Fonts_GetChar(c, width);
+	else
+		d = &led_table[c][0];
 
 	uint8_t znak[16][16];
 	int j, i, z;
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < width; i++)
 	{
 		z = 0;
 
-		for (j = 0; j < 8; j++)
+		for (j = 0; j < height; j++)
 		{
 			znak[i][j] = (*d >> z) & 1;
 			z++;
@@ -193,29 +327,30 @@ void ma_putchar(char c, uint16_t x, uint16_t y, uint8_t size,
 		d++;
 	}
 
-	for (i = 0; i < 16; i++)
-	{
-		z = 0;
-
-		for (j = 8; j < 16; j++)
+	if (height > 8)
+		for (i = 0; i < 16; i++)
 		{
+			z = 0;
 
-			znak[i][j] = (*d >> z) & 1;
-			z++;
+			for (j = 8; j < 16; j++)
+			{
+
+				znak[i][j] = (*d >> z) & 1;
+				z++;
+			}
+			d++;
 		}
-		d++;
-	}
 
 	uint8_t slowo;
 	uint8_t biit;
 	uint8_t xx, yy;
-	for (j = 0; j < 16; j++)
+	for (j = 0; j < height; j++)
 	{
-		for (i = 0; i < 16; i++)
+		for (i = 0; i < width; i++)
 		{
 			xx = i + x;
 			yy = y + j;
-			if (znak[15 - i][j] && yy < MATRIX_ROWS && xx < MATRIX_COLS)
+			if (znak[width - 1 - i][j] && yy < MATRIX_ROWS && xx < MATRIX_COLS)
 			{
 				slowo = (xx) / 16;
 				biit = 15 - ((xx) % 16);
@@ -229,4 +364,23 @@ void ma_putchar(char c, uint16_t x, uint16_t y, uint8_t size,
 			}
 		}
 	}
+}
+
+void ma_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright)
+{
+	chDbgAssert(x < MATRIX_COLS, "out of scope", 0);
+	chDbgAssert(y < MATRIX_ROWS, "out of scope", 0);
+	chDbgAssert(bright< MATRIX_BRIGHT, "out of scope", 0);
+	uint8_t slowo = x / 16;
+	uint8_t biit = 15 - (x % 16);
+	if (on)
+		buffer[slowo][y][bright] |= 1 << biit;
+	else
+		buffer[slowo][y][bright] &= (~1 << biit);
+}
+
+inline animated_character_t * ma_get_character(uint8_t index)
+{
+	chDbgAssert(index < ANIMATED_CHARS_COUNT, "index of array out of scope", 0);
+	return time + index;
 }

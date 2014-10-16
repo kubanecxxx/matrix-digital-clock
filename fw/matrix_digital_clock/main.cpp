@@ -19,123 +19,73 @@
 #include "scheduler.hpp"
 #include "matrix_driver.h"
 #include "matrix_abstraction.h"
-
-/*
- static SPIConfig config =
- { NULL, CS_PORT, CS_PIN, SPI_BR };
- */
-
-//IRQ PC5
-//CE PA2
-//CS PA4
-/*
- static NRF24Config c =
- { CE_PORT, CS_PORT, CE_PIN, CS_PIN };
+#include "packetHandling.h"
+#include "wireless.h"
 
 
- //no fear konstruktor se zavolá
- RF24 rf(&SPID1, &c);
+static void blik(arg_t);
+static Scheduler s1(blik, NULL, MS2ST(3000));
+static void config_matrix();
+static void start_watchdog();
 
- */
-static const uint64_t pipe = 0x7878787878LL;
-
-void blik(arg_t a)
-{
-
-	//pwmEnableChannel(&PWMD2, 2, PWM_PERCENTAGE_TO_WIDTH(&PWMD2, ja));
-
-	ma_demo();
-
-}
-
-/*
- * PWM configuration structure.
- * Cyclic callback enabled, channels 3 and 4 enabled without callbacks,
- * the active state is a logic one.
- */
-static PWMConfig pwmcfg =
-{ 1000000, /* 10kHz PWM clock frequency.   */
-1000, /* PWM period 1S (in ticks).    */
-NULL,
-{
-{ PWM_OUTPUT_DISABLED, NULL },
-{ PWM_OUTPUT_DISABLED, NULL },
-{ PWM_OUTPUT_ACTIVE_HIGH, NULL },
-{ PWM_OUTPUT_DISABLED, NULL } },
-/* HW dependent part.*/
-0, 0,
-#if STM32_PWM_USE_ADVANCED
-		0
-#endif
-	};
+systime_t sysTime;
 
 /*
  * Application entry point.
  */
-systime_t sysTime;
-
-static Scheduler s1(blik, NULL, MS2ST(500));
-//static serial ser(&SD1, &rf);
-
-static void config_matrix();
 
 int main(void)
 {
-
 	halInit();
 	chSysInit();
-	rtcInit();
 
-	RTCTime t;
-	t.tv_sec = 1412876280;
-	//rtcSetTime(&RTCD1, &t);
-
-	//kruciální řádky - odpojit jtag; nechat jenom swd - sou na nem piny pro SPI1
-	//premapovat SPI1 na PB3;4;5
-	RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-	AFIO->MAPR |= AFIO_MAPR_SPI1_REMAP;
-	AFIO->MAPR |= 0b010 << 24;
-
-#if 0
-	//kruciální řádky - odpojit jtag; nechat jenom swd - sou na nem piny pro SPI1
-	//premapovat SPI1 na PB3;4;5
-	RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-	AFIO->MAPR |= AFIO_MAPR_SPI1_REMAP;
-	AFIO->MAPR |= 0b010 << 24;
-
-	spiStart(&SPID1, &config);
-	palSetPadMode(config.ssport, config.sspad, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetPadMode(SPI_SCK_PORT, SPI_SCK_PIN, SPI_SCK_MODE);
-	palSetPadMode(SPI_MISO_PORT, SPI_MISO_PIN, SPI_MISO_MODE);
-	palSetPadMode(SPI_MOSI_PORT, SPI_MOSI_PIN, SPI_MOSI_MODE);
-#endif
-
-	//setup watchdog
-	/*
-	 DBGMCU->CR |= DBGMCU_CR_DBG_IWDG_STOP;
-	 IWDG->KR = 0x5555;
-	 IWDG->PR = 6;
-	 IWDG->RLR = 0xFFF;
-	 IWDG->KR = 0xCCCC;
-	 */
-
+	//start_watchdog();
 	config_matrix();
 	ma_init();
+	wl_init();
+	//s1.Register();
 
-#if 1
-
-#endif
 	while (TRUE)
 	{
 		Scheduler::Play();
 		sysTime = chTimeNow();
+		chThdSleepMilliseconds(1);
+		ph.HandlePacketLoop();
 	}
 
 	return 1;
 }
 
+void blik(arg_t )
+{
+	//pwmEnableChannel(&PWMD2, 2, PWM_PERCENTAGE_TO_WIDTH(&PWMD2, ja));
+	static int i ;
+
+	animated_character_t * c = ma_get_character(C_LED);
+	c->character =  (i&1) * L_LEFT_UPPER_CORNER;
+	i++;
+	return;
+
+	if (i &1 )
+		ma_select_function(DAY_TIME);
+	else
+		ma_select_function(NIGHT_TIME);
+
+	i++;
+}
+
+void start_watchdog()
+{
+	 DBGMCU->CR |= DBGMCU_CR_DBG_IWDG_STOP;
+	 IWDG->KR = 0x5555;
+	 IWDG->PR = 6;
+	 IWDG->RLR = 0xFFF;
+	 IWDG->KR = 0xCCCC;
+}
+
 void config_matrix()
 {
+
 	static const matrix_gpio_t gpio[16] =
 	{
 	{ GPIOA, 10 },
@@ -155,10 +105,20 @@ void config_matrix()
 	{ GPIOA, 2 },
 	{ GPIOA, 1 } };
 
-	static const matrix_config_t matrix_config =
-	{ &SPID2, &GPTD1, gpio };
+	static const PWMConfig pwmconfig =
+	{ 24000000, 2400, NULL,
+	{
+	{ PWM_OUTPUT_ACTIVE_LOW, NULL },
+	{ PWM_OUTPUT_DISABLED, NULL },
+	{ PWM_OUTPUT_DISABLED, NULL },
+	{ PWM_OUTPUT_DISABLED, NULL } }, 0 };
 
-	DBGMCU->CR |= DBGMCU_CR_DBG_TIM1_STOP;
+	static const matrix_config_t matrix_config =
+	{ &SPID2, &GPTD2, gpio, &PWMD1, 0 };
+
+	pwmStart(&PWMD1, &pwmconfig);
+
+	DBGMCU->CR |= DBGMCU_CR_DBG_TIM2_STOP;
 	matrix_init(&matrix_config);
 	matrix_start();
 }

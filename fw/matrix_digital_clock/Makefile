@@ -114,14 +114,16 @@ ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC)  matrix_driver \
-         $(CHIBIOS)/os/various
+         $(CHIBIOS)/os/various wireless
                   
 #LIBRARIES = $(HOME)/elektronika/projekty/matrix-digital-clock/fw/matrix_digital_clock/library
 LIBRARIES = ./library
 include $(LIBRARIES)/rules.mk         
+_MOJE = $(HOME)/elektronika/homeAutomation/config
+INCDIR += $(_MOJE)
          
-CSRC += $(CFILES)
-CPPSRC += $(CPPFILES) main.cpp
+CSRC += $(CFILES) $(_MOJE)/table_conf.c
+CPPSRC += $(CPPFILES) main.cpp wireless/wireless.cpp
 
 #
 # Project, sources and paths

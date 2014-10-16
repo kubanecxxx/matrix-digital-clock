@@ -61,8 +61,10 @@ void matrix_demo(void)
 const uint8_t matrix_table[7] =
 { 0, 0, 0, 0, 1, 1, 2 };
 
+static uint8_t inter = 0;
 void gpt_cb(GPTDriver * gpt)
 {
+	inter = 1;
 	(void) gpt;
 	int i;
 	static uint16_t current_row = 0;
@@ -94,12 +96,19 @@ void gpt_cb(GPTDriver * gpt)
 
 	palSetPad(STCP_PORT, STCP_PIN);
 	palSetPad(c->gpio[current_row].port, c->gpio[current_row].pin);
+	inter = 0;
 }
 
 void matrix_init(const matrix_config_t * cfg)
 {
 	c = cfg;
 	matrix_demo();
+}
+
+void matrix_pwm_set_period(uint16_t percent)
+{
+	pwmEnableChannel(c->pwm, c->pwmChannel,
+			PWM_PERCENTAGE_TO_WIDTH(c->pwm, percent));
 }
 
 void matrix_start()
@@ -115,9 +124,9 @@ void matrix_start()
 
 	palSetPadMode(STCP_PORT, STCP_PIN, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetPadMode(MR_PORT, MR_PIN, PAL_MODE_OUTPUT_PUSHPULL);
-	palSetPadMode(OE_PORT, OE_PIN, PAL_MODE_OUTPUT_PUSHPULL);
+	palSetPadMode(OE_PORT, OE_PIN, PAL_MODE_STM32_ALTERNATE_PUSHPULL);
 
-	palClearPad(OE_PORT, OE_PIN);
+	//palClearPad(OE_PORT, OE_PIN);
 	palClearPad(MR_PORT, MR_PIN);
 	chThdSleepMilliseconds(1);
 
@@ -147,7 +156,7 @@ void matrix_clear_screen()
 		}
 	}
 }
-
+#if 0
 void matrix_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright)
 {
 	chDbgAssert(x < MATRIX_COLS, "out of scope", 0);
@@ -160,6 +169,7 @@ void matrix_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright)
 	else
 		display_data[slowo][y][bright] &= (~1 << biit);
 }
+#endif
 
 // 16 columns in one word,
 void matrix_put_bitmap(const uint16_t * data)
@@ -176,6 +186,7 @@ void matrix_put_bitmap(const uint16_t * data)
 	}
 }
 
+#if 0
 void matrix_put_line(const uint16_t * data, uint8_t row, uint8_t bright)
 {
 	int i;
@@ -184,4 +195,5 @@ void matrix_put_line(const uint16_t * data, uint8_t row, uint8_t bright)
 		display_data[i][row][bright] = *data++;
 	}
 }
+#endif
 
