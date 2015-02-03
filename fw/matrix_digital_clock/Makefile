@@ -8,6 +8,8 @@ ifeq ($(USE_OPT),)
   USE_OPT = -O0 -ggdb -fomit-frame-pointer
 endif
 
+USE_KUBANEC_OPT = -O3 -ggdb -fomit-frame-pointer -falign-functions=16
+
 # C specific options here (added to USE_OPT).
 ifeq ($(USE_COPT),)
   USE_COPT = 
@@ -82,7 +84,7 @@ CSRC = $(PORTSRC) \
        #$(CHIBIOS)/os/various/evtimer.c \
        #$(CHIBIOS)/os/various/syscalls.c \
 
-CSRC +=  matrix_driver/matrix_driver.c matrix_driver/matrix_abstraction.c
+CSRC +=   matrix_driver/matrix_abstraction.c  
 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
@@ -114,13 +116,13 @@ ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) $(TESTINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC)  matrix_driver \
-         $(CHIBIOS)/os/various wireless
+         $(CHIBIOS)/os/various dcf
                   
 #LIBRARIES = $(HOME)/elektronika/projekty/matrix-digital-clock/fw/matrix_digital_clock/library
 #multi library configuration
 LIBRARIES = ../../../library
 USE_SCHEDULER = yes
-USE_RF24_CALLBACKS = yes
+#USE_RF24_CALLBACKS = yes
 USE_FONTS = yes
 
 include $(LIBRARIES)/rules.mk
@@ -130,7 +132,10 @@ include $(LIBRARIES)/../config/rules.mk
 #INCDIR += $(_MOJE)
          
 CSRC += $(CFILES) #$(_MOJE)/table_conf.c
-CPPSRC += $(CPPFILES) main.cpp wireless/wireless.cpp
+CPPSRC += $(CPPFILES) main.cpp 
+CSRC += dcf/dcf.c
+
+KUBANECSRC = matrix_driver/matrix_driver.c
 
 #
 # Project, sources and paths

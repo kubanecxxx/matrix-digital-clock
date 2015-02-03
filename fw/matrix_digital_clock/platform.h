@@ -36,17 +36,9 @@ extern "C" {
 #define MATRIX_DATA_PIN		15
 
 
-#define RF_CS_PORT	GPIOB
-#define RF_CS_PIN	6
-#define RF_CE_PORT	GPIOA
-#define RF_CE_PIN	15
+#define DCF_PORT GPIOB
+#define DCF_PIN	6
 
-#define RF_MOSI_PORT	GPIOB
-#define RF_MISO_PORT	GPIOB
-#define RF_SCK_PORT		GPIOB
-#define RF_MOSI_PIN		5
-#define RF_MISO_PIN		4
-#define RF_SCK_PIN		3
 
 #ifdef __cplusplus
 }

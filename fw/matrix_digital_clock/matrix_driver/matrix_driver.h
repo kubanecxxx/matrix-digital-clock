@@ -35,7 +35,7 @@ struct matrix_config_t
 
 /* Exported constants --------------------------------------------------------*/
 #define MATRIX_ROWS 16
-#define MATRIX_COLS 64
+#define MATRIX_COLS 96
 #define MATRIX_ARRAY_COLS (MATRIX_COLS / 16)
 #define MATRIX_BRIGHT 3
 

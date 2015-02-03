@@ -20,7 +20,7 @@
 #define DISPLAY_HEIGHT 16
 
 //x coordination offset for nighttime
-#define NIGHT_OFFSET 2
+#define NIGHT_OFFSET 15
 
 #define ma_animated_character_animation(c,_animation) {if (c->animation != _animation) \
 	{c->animation = _animation; c->counter = 16;}}
@@ -39,6 +39,8 @@ static function_t func = DAY_TIME;
 static const uint8_t font_sizes[] =
 { 8, 16, 16, 4 };
 
+static uint16_t brightness = 4000;
+
 /* Private function prototypes -----------------------------------------------*/
 static void ma_clear_screen(void);
 static void ma_putchar_animated(animated_character_t * data);
@@ -51,6 +53,16 @@ inline uint8_t ma_font_size(fonts_t font)
 {
 	chDbgAssert(font < P_LAST, "font out of scope", 0);
 	return font_sizes[font];
+}
+
+inline void ma_set_brightness(uint16_t b)
+{
+	brightness = b;
+}
+
+inline uint16_t ma_brightness(void)
+{
+	return brightness;
 }
 
 void ma_time_loop(uint8_t day)
@@ -66,7 +78,7 @@ void ma_time_loop(uint8_t day)
 	temp = temp / 60;
 
 	hour = temp % 24;
-	hour += 2;
+	//hour += 2;
 
 	animated_character_t * c = time;
 	c->character = sec % 10 + 48;
@@ -102,12 +114,19 @@ void ma_time_loop(uint8_t day)
 			}
 			c->font = P_16;
 			c->y = 1;
-			//c->x = 14 * i + (!(i & 1))* 2 - 3;
-			c->x = 10 * i;
+			c->x = 15 * i + (!(i & 1)) * 3 + 2;
+			//c->x = 14 * i;
 
 			c->brightness = 7;
 			ma_putchar_animated(c++);
 		}
+		temp = ':';
+		ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, 24 + 2, 0, P_16,
+				7);
+		ma_setup_animated_character(C_DOUBLE_DOT2, FADE, temp, 54 + 2, 0, P_16,
+				7);
+		ma_putchar_animated_number(C_DOUBLE_DOT1);
+		ma_putchar_animated_number(C_DOUBLE_DOT2);
 	}
 	else
 	{
@@ -120,8 +139,8 @@ void ma_time_loop(uint8_t day)
 			c->font = P_16;
 			c->y = 1;
 			if (i > 1)
-				temp = 6;
-			c->x = temp + (13 * i) + NIGHT_OFFSET;
+				temp = 8;
+			c->x = temp + (14 * i) + NIGHT_OFFSET;
 
 			c->brightness = 7;
 			ma_putchar_animated(c++);
@@ -133,8 +152,8 @@ void ma_time_loop(uint8_t day)
 		else
 			temp = ' ';
 
-		ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, NIGHT_OFFSET+23,
-				0, 16, 7);
+		ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, NIGHT_OFFSET+24,
+				0, P_16, 7);
 		ma_putchar_animated_number(C_DOUBLE_DOT1);
 	}
 }
@@ -152,7 +171,8 @@ void ma_cb(arg_t b)
 	(void) b;
 	static function_t old_f;
 	static uint16_t work_bright = 0;
-	static uint16_t brightness = 4000;
+
+	//static uint16_t brightness = 200;
 	static uint16_t brightness_backup;
 
 #define BRIGHTNESS_STEP 4
@@ -182,16 +202,16 @@ void ma_cb(arg_t b)
 			work_bright += BRIGHTNESS_STEP;
 
 		matrix_pwm_set_period(work_bright);
+		//matrix_pwm_set_period(0);
 	}
 
 	ma_clear_screen();
-	ma_putchar_animated(ma_get_character(C_LED));
+	//ma_putchar_animated(ma_get_character(C_LED));
 
-	 if (old_f == DAY_TIME)
-	 ma_time_loop(1);
-	 else if (old_f == NIGHT_TIME)
-	 ma_time_loop(0);
-
+	if (old_f == DAY_TIME)
+		ma_time_loop(1);
+	else if (old_f == NIGHT_TIME)
+		ma_time_loop(0);
 
 //memset(buffer, 0xff, MATRIX_ARRAY_COLS * MATRIX_ROWS * 2 * MATRIX_BRIGHT);
 	matrix_put_bitmap((uint16_t *) buffer);
@@ -384,3 +404,9 @@ inline animated_character_t * ma_get_character(uint8_t index)
 	chDbgAssert(index < ANIMATED_CHARS_COUNT, "index of array out of scope", 0);
 	return time + index;
 }
+
+const uint8_t matrix_table[7] =
+{ 0, 0, 0, 0, 1, 1, 2 };
+
+static uint16_t current_row = 0;
+

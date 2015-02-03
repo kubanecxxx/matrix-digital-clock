@@ -56,7 +56,7 @@ typedef enum
 
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
-#define ANIMATED_CHARS_COUNT 9
+#define ANIMATED_CHARS_COUNT 8
 
 #define C_SECONDS_ONES 	0
 #define C_SECONDS_TENS 	1
@@ -75,6 +75,8 @@ void ma_select_function(function_t f);
 void ma_write_ambient_lumination(uint16_t luminance);
 void ma_put_pixel(uint8_t on, uint16_t x, uint16_t y, uint8_t bright);
 animated_character_t * ma_get_character(uint8_t index);
+void ma_set_brightness(uint16_t percent);
+uint16_t ma_brightness(void);
 
 #ifdef __cplusplus
 }

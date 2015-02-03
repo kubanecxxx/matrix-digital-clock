@@ -1,23 +1,29 @@
 /**
- * @file wireless.h
+ * @file dcf.h
  * @author kubanec
- * @date 16. 10. 2014
+ * @date 8. 1. 2015
  *
  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef WIRELESS_WIRELESS_H_
-#define WIRELESS_WIRELESS_H_
+#ifndef DCF_DCF_H_
+#define DCF_DCF_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Includes ------------------------------------------------------------------*/
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-extern packetHandling ph;
-
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions --------------------------------------------------------*/
-void wl_init(void);
 
+void dcf_init(void);
+void dcf_play(void);
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif /* WIRELESS_WIRELESS_H_ */
+#endif /* DCF_DCF_H_ */

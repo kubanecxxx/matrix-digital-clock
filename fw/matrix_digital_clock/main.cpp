@@ -19,9 +19,7 @@
 #include "scheduler.hpp"
 #include "matrix_driver.h"
 #include "matrix_abstraction.h"
-#include "packetHandling.h"
-#include "wireless.h"
-
+#include "dcf.h"
 
 static void blik(arg_t);
 static Scheduler s1(blik, NULL, MS2ST(3000));
@@ -39,34 +37,35 @@ int main(void)
 	halInit();
 	chSysInit();
 
+
 	//start_watchdog();
 	config_matrix();
 	ma_init();
-	wl_init();
 	//s1.Register();
+	dcf_init();
+	dcf_play();
 
 	while (TRUE)
 	{
 		Scheduler::Play();
 		sysTime = chTimeNow();
 		chThdSleepMilliseconds(1);
-		ph.HandlePacketLoop();
 	}
 
 	return 1;
 }
 
-void blik(arg_t )
+void blik(arg_t)
 {
 	//pwmEnableChannel(&PWMD2, 2, PWM_PERCENTAGE_TO_WIDTH(&PWMD2, ja));
-	static int i ;
+	static int i;
 
 	animated_character_t * c = ma_get_character(C_LED);
-	c->character =  (i&1) * L_LEFT_UPPER_CORNER;
+	c->character = (i & 1) * L_LEFT_UPPER_CORNER;
 	i++;
 	return;
 
-	if (i &1 )
+	if (i & 1)
 		ma_select_function(DAY_TIME);
 	else
 		ma_select_function(NIGHT_TIME);
@@ -76,11 +75,11 @@ void blik(arg_t )
 
 void start_watchdog()
 {
-	 DBGMCU->CR |= DBGMCU_CR_DBG_IWDG_STOP;
-	 IWDG->KR = 0x5555;
-	 IWDG->PR = 6;
-	 IWDG->RLR = 0xFFF;
-	 IWDG->KR = 0xCCCC;
+	DBGMCU->CR |= DBGMCU_CR_DBG_IWDG_STOP;
+	IWDG->KR = 0x5555;
+	IWDG->PR = 6;
+	IWDG->RLR = 0xFFF;
+	IWDG->KR = 0xCCCC;
 }
 
 void config_matrix()
@@ -106,7 +105,7 @@ void config_matrix()
 	{ GPIOA, 1 } };
 
 	static const PWMConfig pwmconfig =
-	{ 24000000, 2400, NULL,
+	{ 24000000, 1100, NULL,
 	{
 	{ PWM_OUTPUT_ACTIVE_LOW, NULL },
 	{ PWM_OUTPUT_DISABLED, NULL },
