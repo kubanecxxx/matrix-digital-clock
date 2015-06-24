@@ -22,7 +22,9 @@
 #include "dcf.h"
 
 static void blik(arg_t);
+static void cb(arg_t);
 static Scheduler s1(blik, NULL, MS2ST(3000));
+static Scheduler s2(cb, NULL, MS2ST(10000), ONCE);
 static void config_matrix();
 static void start_watchdog();
 
@@ -37,13 +39,14 @@ int main(void)
 	halInit();
 	chSysInit();
 
-
-	//start_watchdog();
 	config_matrix();
 	ma_init();
-	//s1.Register();
+
 	dcf_init();
-	dcf_play();
+	ma_select_function(DAY_TIME);
+	ma_set_brightness(2000);
+
+	s2.Register();
 
 	while (TRUE)
 	{
@@ -55,31 +58,33 @@ int main(void)
 	return 1;
 }
 
-void blik(arg_t)
+void cb(arg_t)
 {
-	//pwmEnableChannel(&PWMD2, 2, PWM_PERCENTAGE_TO_WIDTH(&PWMD2, ja));
-	static int i;
-
-	animated_character_t * c = ma_get_character(C_LED);
-	c->character = (i & 1) * L_LEFT_UPPER_CORNER;
-	i++;
-	return;
-
-	if (i & 1)
-		ma_select_function(DAY_TIME);
-	else
-		ma_select_function(NIGHT_TIME);
-
-	i++;
+	ma_set_brightness(0);
+	dcf_play();
+	s1.Register();
 }
 
-void start_watchdog()
+void blik(arg_t)
 {
-	DBGMCU->CR |= DBGMCU_CR_DBG_IWDG_STOP;
-	IWDG->KR = 0x5555;
-	IWDG->PR = 6;
-	IWDG->RLR = 0xFFF;
-	IWDG->KR = 0xCCCC;
+	if (dcf_ready())
+	{
+		//daytime
+		if (dcf_getTime() > 21600 && dcf_getTime() < 79200)
+		{
+			ma_select_function(DAY_TIME);
+			ma_set_brightness(2000);
+		}
+		else
+		{
+			ma_select_function(NIGHT_TIME);
+			ma_set_brightness(1000);
+		}
+	}
+
+	if ((dcf_getTime() < 60 || !dcf_valid()) && dcf_ready())
+		dcf_play();
+
 }
 
 void config_matrix()
@@ -89,12 +94,14 @@ void config_matrix()
 	{
 	{ GPIOA, 10 },
 	{ GPIOA, 9 },
-	{ GPIOB, 14 },
+	{
+	GPIOB, 14 },
 	{ GPIOB, 12 },
 	{ GPIOB, 11 },
 	{ GPIOB, 10 },
 	{ GPIOB, 2 },
-	{ GPIOB, 1 },
+	{
+	GPIOB, 1 },
 	{ GPIOB, 0 },
 	{ GPIOA, 7 },
 	{ GPIOA, 6 },
@@ -107,9 +114,11 @@ void config_matrix()
 	static const PWMConfig pwmconfig =
 	{ 24000000, 1100, NULL,
 	{
-	{ PWM_OUTPUT_ACTIVE_LOW, NULL },
+	{
+	PWM_OUTPUT_ACTIVE_LOW, NULL },
 	{ PWM_OUTPUT_DISABLED, NULL },
-	{ PWM_OUTPUT_DISABLED, NULL },
+	{
+	PWM_OUTPUT_DISABLED, NULL },
 	{ PWM_OUTPUT_DISABLED, NULL } }, 0 };
 
 	static const matrix_config_t matrix_config =

@@ -29,7 +29,7 @@
  * Board identifier.
  */
 //#define BOARD_ST_STM32VL_DISCOVERY
-#define BOARD_NAME              "ST Routerboard"
+#define BOARD_NAME              "ST Digital clock"
 
 /*
  * Board frequencies.

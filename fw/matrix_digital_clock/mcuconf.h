@@ -37,10 +37,10 @@
 #define STM32_NO_INIT                       FALSE
 #define STM32_HSI_ENABLED                   TRUE
 #define STM32_LSI_ENABLED                   TRUE
-#define STM32_HSE_ENABLED                   FALSE
+#define STM32_HSE_ENABLED                   TRUE
 #define STM32_LSE_ENABLED                   FALSE
 #define STM32_SW                            STM32_SW_PLL
-#define STM32_PLLSRC                        STM32_PLLSRC_HSI
+#define STM32_PLLSRC                        STM32_PLLSRC_HSE
 #define STM32_PLLXTPRE                      STM32_PLLXTPRE_DIV1
 #define STM32_PLLMUL_VALUE                  6
 #define STM32_HPRE                          STM32_HPRE_DIV1
@@ -80,13 +80,13 @@
 #define STM32_GPT_USE_TIM1                  FALSE
 #define STM32_GPT_USE_TIM2                  TRUE
 #define STM32_GPT_USE_TIM3                  TRUE
-#define STM32_GPT_USE_TIM4                  FALSE
+#define STM32_GPT_USE_TIM4                  TRUE
 #define STM32_GPT_USE_TIM5                  FALSE
 #define STM32_GPT_USE_TIM8                  FALSE
 #define STM32_GPT_TIM1_IRQ_PRIORITY         7
 #define STM32_GPT_TIM2_IRQ_PRIORITY         7
 #define STM32_GPT_TIM3_IRQ_PRIORITY         6
-#define STM32_GPT_TIM4_IRQ_PRIORITY         7
+#define STM32_GPT_TIM4_IRQ_PRIORITY         5
 #define STM32_GPT_TIM5_IRQ_PRIORITY         7
 #define STM32_GPT_TIM8_IRQ_PRIORITY         7
 

@@ -21,6 +21,9 @@ extern "C" {
 
 void dcf_init(void);
 void dcf_play(void);
+uint32_t dcf_getTime(void);
+uint8_t dcf_ready(void);
+uint8_t dcf_valid(void);
 
 #ifdef __cplusplus
 }

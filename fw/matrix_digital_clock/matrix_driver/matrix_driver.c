@@ -89,6 +89,7 @@ void matrix_start()
 	palSetPadMode(STCP_PORT, STCP_PIN, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetPadMode(MR_PORT, MR_PIN, PAL_MODE_OUTPUT_PUSHPULL);
 	palSetPadMode(OE_PORT, OE_PIN, PAL_MODE_STM32_ALTERNATE_PUSHPULL);
+	//palSetPadMode(OE_PORT,OE_PIN,PAL_MODE_OUTPUT_PUSHPULL);
 
 	//palClearPad(OE_PORT, OE_PIN);
 	palClearPad(MR_PORT, MR_PIN);
@@ -98,7 +99,7 @@ void matrix_start()
 
 	//config timer
 	gptStart(c->timer, &gpt);
-	gptStartContinuous(c->timer, 28);
+	gptStartContinuous(c->timer, 80);
 
 	//config spi
 	palSetPadMode(MATRIX_CLOCK_PORT, MATRIX_CLOCK_PIN,
@@ -151,28 +152,19 @@ void matrix_put_bitmap(const uint16_t * data)
 	}
 }
 
-#if 0
-void matrix_put_line(const uint16_t * data, uint8_t row, uint8_t bright)
-{
-	int i;
-	for (i = 0; i < MATRIX_ARRAY_COLS; i++)
-	{
-		display_data[i][row][bright] = *data++;
-	}
-}
-#endif
-
 static uint16_t current_row;
+static uint16_t old_row = 0;
 
 void interrupt(void)
 {
 	int i;
 
 	static uint8_t brigh_count = 0;
-	uint16_t old_row = current_row;
+
 	uint16_t d;
 	uint16_t r;
 	r = matrix_table[brigh_count];
+	old_row = current_row;
 	current_row++;
 
 	if (current_row > 15)
@@ -186,18 +178,9 @@ void interrupt(void)
 		}
 	}
 
-	palClearPad(c->gpio[old_row].port, c->gpio[old_row].pin);
 	palClearPad(STCP_PORT, STCP_PIN);
-#if 0
-	for (i = 0; i < MATRIX_ARRAY_COLS; i++)
-	{
-		//6* 2bytes
-		d = display_data[i][current_row][r];
-		spiPolledExchange(&SPID2, d);
-		//spiStartSendI(c->spi,MATRIX_ARRAY_COLS * 2,)
-	}
-#else
-	static uint16_t buffer[MATRIX_ARRAY_COLS ];
+
+	static uint16_t buffer[MATRIX_ARRAY_COLS];
 	for (i = 0; i < MATRIX_ARRAY_COLS; i++)
 	{
 		//6* 2bytes
@@ -208,14 +191,16 @@ void interrupt(void)
 
 	if (c->spi->state == SPI_READY)
 		spiStartSendI(c->spi, MATRIX_ARRAY_COLS * 2, buffer);
-#endif
 
 }
 
 void spi_cb(void)
 {
+	int i = 0;
+	for (i = 0; i < 10; i++)
+		palClearPad(c->gpio[old_row].port, c->gpio[old_row].pin);
+
 	palSetPad(STCP_PORT, STCP_PIN);
 	palSetPad(c->gpio[current_row].port, c->gpio[current_row].pin);
 }
-
 

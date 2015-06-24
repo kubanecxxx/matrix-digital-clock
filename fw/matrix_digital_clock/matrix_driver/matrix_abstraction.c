@@ -54,7 +54,7 @@ inline uint8_t ma_font_size(fonts_t font)
 	chDbgAssert(font < P_LAST, "font out of scope", 0);
 	return font_sizes[font];
 }
-
+static uint16_t b2;
 inline void ma_set_brightness(uint16_t b)
 {
 	brightness = b;
@@ -67,17 +67,20 @@ inline uint16_t ma_brightness(void)
 
 void ma_time_loop(uint8_t day)
 {
-	RTCTime t;
-	rtcGetTime(&RTCD1, &t);
-	uint32_t sec, min, hour, temp;
+	//RTCTime t;
+	//rtcGetTime(&RTCD1, &t);
+	uint32_t sec, min, hour, mod;
+	uint8_t temp;
 
-	sec = t.tv_sec % 60;
-	temp = t.tv_sec / 60;
+	mod = dcf_getTime();
 
-	min = temp % 60;
-	temp = temp / 60;
+	sec = mod % 60;
+	mod = mod / 60;
 
-	hour = temp % 24;
+	min = mod % 60;
+	mod = mod / 60;
+
+	hour = mod % 24;
 	//hour += 2;
 
 	animated_character_t * c = time;
@@ -162,8 +165,11 @@ static uint8_t mode_change_sequence = 0;
 
 void ma_select_function(function_t f)
 {
+	if (f != func)
+		mode_change_sequence = 0;
+
 	func = f;
-	mode_change_sequence = 0;
+
 }
 
 void ma_cb(arg_t b)
@@ -182,31 +188,36 @@ void ma_cb(arg_t b)
 		//slow fadeout and fade in
 		//fade out
 		brightness_backup = brightness;
-		brightness = 0;
+		b2 = 0;
 		mode_change_sequence = 1;
 	}
-	else if (mode_change_sequence
-			== 1&& work_bright < 10 && chTimeNow() > MS2ST(1000))
+	else if (mode_change_sequence == 1 && work_bright < 10)
 	{
 		//fade in
 		old_f = func;
-		brightness = brightness_backup;
+		b2 = brightness_backup;
 		mode_change_sequence = 2;
 	}
 
-	if (work_bright != brightness)
+	if (work_bright != brightness && mode_change_sequence == 2)
 	{
+		//bright change from api
 		if (work_bright > brightness)
 			work_bright -= BRIGHTNESS_STEP;
 		if (work_bright < brightness)
 			work_bright += BRIGHTNESS_STEP;
-
-		matrix_pwm_set_period(work_bright);
-		//matrix_pwm_set_period(0);
+	}
+	else if (work_bright != b2)
+	{
+		//bright change from - changing mode fade
+		if (work_bright > b2)
+			work_bright -= BRIGHTNESS_STEP;
+		if (work_bright < brightness)
+			work_bright += b2;
 	}
 
+	matrix_pwm_set_period(work_bright);
 	ma_clear_screen();
-	//ma_putchar_animated(ma_get_character(C_LED));
 
 	if (old_f == DAY_TIME)
 		ma_time_loop(1);
