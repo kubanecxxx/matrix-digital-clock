@@ -96,7 +96,11 @@ void ma_time_loop(uint8_t day)
 
 	c->character = hour % 10 + 48;
 	c++;
-	c->character = hour / 10 + 48;
+	if (hour < 10)
+		c->character = ' ';
+	else
+		c->character = hour / 10 + 48;
+
 
 	c = time;
 	int i;
@@ -115,6 +119,8 @@ void ma_time_loop(uint8_t day)
 				ma_animated_character_animation(c, SLIDE_DOWN);
 
 			}
+
+
 			c->font = P_16;
 			c->y = 1;
 			c->x = 15 * i + (!(i & 1)) * 3 + 2;

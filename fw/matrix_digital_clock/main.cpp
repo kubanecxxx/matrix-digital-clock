@@ -44,7 +44,7 @@ int main(void)
 
 	dcf_init();
 	ma_select_function(DAY_TIME);
-	ma_set_brightness(2000);
+	ma_set_brightness(80);
 
 	s2.Register();
 
@@ -78,7 +78,7 @@ void blik(arg_t)
 		else
 		{
 			ma_select_function(NIGHT_TIME);
-			ma_set_brightness(1000);
+			ma_set_brightness(80);
 		}
 	}
 
