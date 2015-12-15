@@ -1,3 +1,6 @@
 [submodule "library"]
 	path = library
 	url = https://github.com/kubanecxxx/library.git
+[submodule "piris"]
+	path = piris
+	url = https://github.com/kubanecxxx/piris.git
