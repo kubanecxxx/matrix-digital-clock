@@ -20,8 +20,16 @@ fonts/terminus16_bold.c
 fonts/terminus12_bold.c
 
 menu/menu.cpp
+
 menu/screens.cpp
 menu/configuration.c
+menu/crc8.c
+menu/print.cpp
+
+rtc/rtc_control.c
+wifi/wifi.c
+
+
 )
 
 set (EXTRA_HEADERS
@@ -38,6 +46,12 @@ matrix_driver/matrix_abstraction.h
 
 menu/menu.h
 menu/configuration.h
+menu/crc8.h
+menu/screens.h
+menu/print.h
+
+rtc/rtc_control.h
+wifi/wifi.h
 )
 
 set (OPTIMIZED_SOURCES
@@ -50,8 +64,10 @@ board_f100
 
 set (INCLUDE_DIRS
 matrix_driver
-#fonts
 menu
+wifi
+dcf
+rtc
 )
 
 #set (LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32F100xB.ld")
@@ -90,8 +106,10 @@ set (TOOLCHAIN "arm-none-eabi")
 
 include (${CHIBIOS_DIR}/cmakeRules.txt)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/../piris ${CMAKE_CURRENT_BINARY_DIR}/piris)
-add_subdirectory("${CHIBIOS_DIR}/../library" "${CMAKE_CURRENT_BINARY_DIR}/library")
+set (PROJECT_DIRECTORY ${CMAKE_SOURCE_DIR}/../..)
+
+add_subdirectory(${PROJECT_DIRECTORY}/piris/framework ${CMAKE_CURRENT_BINARY_DIR}/piris)
+add_subdirectory("${PROJECT_DIRECTORY}/library" "${CMAKE_CURRENT_BINARY_DIR}/library")
 
 add_executable(${PROJECT_NAME}
 $<TARGET_OBJECTS:ChibiOS_hal>
@@ -99,5 +117,5 @@ $<TARGET_OBJECTS:ChibiOS_rt>
 $<TARGET_OBJECTS:ChibiOS_port>
 $<TARGET_OBJECTS:user_code>
 $<TARGET_OBJECTS:piris>
-$<TARGET_OBJECTS:scheduler>
+$<TARGET_OBJECTS:library>
 )

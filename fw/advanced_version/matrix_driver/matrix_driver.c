@@ -319,7 +319,7 @@ void gpt2(void)
 void spi_cb(void)
 {
     int i ;
-    for (i = 0; i < 15; i++)
+    for (i = 0; i < 10; i++)
     palClearPad(c->gpio[old_row].port, c->gpio[old_row].pin);
     //gptStartOneShot(&GPTD3,2);
     palSetPad(STCP_PORT, STCP_PIN);

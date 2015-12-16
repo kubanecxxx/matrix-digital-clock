@@ -3,6 +3,7 @@
 
 #include "scheduler.hpp"
 #include "configuration.h"
+#include "rtc_control.h"
 
 #define KEY_LEFT 1
 #define KEY_RIGHT 2
@@ -17,73 +18,38 @@ public:
     static void Play(void * self);
     void Init();
 
-    static void print(const char * str, const uint8_t * bright = NULL);
     static uint8_t flash;
     static uint8_t cnt;
+
+    static void num2str(Screen *scr, uint8_t num);
+    static void time2str(Screen *scr, const config_time_t & t);
+
+    typedef enum {CLOCKS,SAVING, MENU} state_t;
+
+    static configuration_t configuration_temp;
 
 private:
     Screen * current;
     Scheduler sh;
     bool screen_active;
+    bool screen_active_edge;
+    bool screen_active_old;
     uint8_t button_old;
-    bool menu_active;
     uint8_t counter;
     uint16_t timeout;
+    uint16_t saving_timeout;
+    state_t machine;
 
-    void fillComponents(const configuration_t* c);
-    void fillStruct(configuration_t * c);
 
+    void static fillComponents(const configuration_t * c);
+    void static fillStruct(configuration_t * c);
+
+    static Screen * createScreens();
+
+    void processMenu(uint8_t button, uint8_t button_rising_edge);
 };
 
-class Screen
-{
-public:
-    typedef struct
-    {
-        const char * label;
-        uint8_t items_count;
-        //1 - combobox
-        //3 - percents
-        //4 - time
-        //32 - text
-        char * data;
 
-    } properties_t;
 
-    typedef struct
-    {
-        uint8_t count;
-        const char ** table;
-    } combo_t;
-
-    Screen(const properties_t & props);
-    void setCombo(const combo_t * combo) {c = combo;}
-    void pairNext(Screen * next);
-
-private:
-    Screen * next;
-    Screen * prev;
-    uint8_t index;
-    bool selected;
-    const properties_t & p;
-    const combo_t * c;
-    uint16_t number;
-    uint8_t hours;
-    uint8_t minutes;
-
-    void handle(uint8_t buttons);
-
-    void time(uint8_t buttons);
-    void combobox(uint8_t buttons);
-    void text(uint8_t buttons);
-    void numberHandle(uint8_t, const uint16_t  maximum);
-    void handleSelected(uint8_t buttons, const uint8_t * table);
-
-    friend class Menu;
-};
-
-#define DECL_SCREEN(name, label, count, dta) \
-    static const Screen::properties_t name##_props = {label, count ,dta}; \
-    Screen name(name##_props)
 
 #endif // MENU_H

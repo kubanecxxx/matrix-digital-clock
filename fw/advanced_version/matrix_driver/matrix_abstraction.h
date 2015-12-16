@@ -91,6 +91,9 @@ void ma_dcf_led(uint8_t state);
 void ma_dcf_progress(uint8_t percent);
 void ma_disable(uint8_t disable);
 
+void ma_cb(void * b);
+void ma_time_loop(uint8_t day);
+
 #ifdef __cplusplus
 }
 #endif

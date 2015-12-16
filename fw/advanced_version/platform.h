@@ -38,6 +38,7 @@ extern "C" {
 
 #define DCF_PORT GPIOB
 #define DCF_PIN	6
+#define DCF_TIMER  GPTD3
 
 #define BUTTON_ENTER_PORT GPIOB
 #define BUTTON_ENTER_PIN 4
@@ -45,6 +46,14 @@ extern "C" {
 #define BUTTON_LEFT_PIN 5
 #define BUTTON_RIGHT_PORT GPIOA
 #define BUTTON_RIGHT_PIN 15
+
+#define WIFI_UART SD1;
+#define WIFI_UART_BAUDRATE 115200
+
+#define WIFI_RX_PORT GPIOB
+#define WIFI_RX_PIN  1
+#define WIFI_TX_PORT GPIOB
+#define WIFI_TX_PIN 2
 
 
 #ifdef __cplusplus

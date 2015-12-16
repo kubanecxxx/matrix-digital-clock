@@ -1,6 +1,10 @@
 #ifndef __CONFIGURATION_H__
 #define __CONFIGURATION_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct
 {
     uint8_t hours;
@@ -8,7 +12,7 @@ typedef struct
 } config_time_t;
 
 #define SOURCE_MANUAL 0
-#define SOURCE_RTC 1
+#define SOURCE_DCF 1
 #define SOURCE_WIFI 2
 
 #define SWITCH_TYPE_TIME 0
@@ -33,13 +37,17 @@ typedef struct {
     uint16_t minLuminance;
     uint16_t photoDay;
     uint16_t photoNight;
-    uint32_t crc;
+    uint16_t crc;
 } configuration_t;
 
 
 void config_save(void);
 void config_retrieve(void);
 
+extern configuration_t  global_configuration;
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

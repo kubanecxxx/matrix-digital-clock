@@ -1,22 +1,64 @@
 #include "hal.h"
 #include "ch.h"
-
 #include "menu.h"
 #include "matrix_abstraction.h"
 #include "scheduler.hpp"
-
-#include "pfont.h"
 #include "chsprintf.h"
+#include "screens.h"
+#include "print.h"
+#include <string.h>
 
-extern Screen * createScreens();
+print matrix;
+
 uint8_t Menu::flash = 2;
 uint8_t Menu::cnt = 0;
+configuration_t  Menu::configuration_temp;
+
+DECL_SCREEN(setup_time, "Time",4);
+DECL_SCREEN(time_source,"Source",1);
+DECL_SCREEN_CUSTOM(wifi_ssid,"SSID",32,Menu::configuration_temp.ssid);
+DECL_SCREEN_CUSTOM(wifi_pass,"Password",32,Menu::configuration_temp.password);
+DECL_SCREEN(luminance_max,"Max luminance",3);
+DECL_SCREEN(luminance_min,"Min luminance",3);
+DECL_SCREEN(photo_day, "Day opto", 3);
+DECL_SCREEN(photo_night, "Night opto" , 3);
+DECL_SCREEN(photoTime , "Switch type" , 1);
+DECL_SCREEN(toDay, "Day time" , 4 );
+DECL_SCREEN(toNight, "Night time" , 4 );
+
+static const char * combo1[] = {"Manual", "DCF", "Wifi"};
+static const Screen::combo_t c1 = {3, combo1};
+
+static const char * combo2[] = {"Time" , "Opto"};
+static const Screen::combo_t c2 = {2, combo2};
 
 Menu::Menu()
 {
+    Screen::setupTime = &setup_time;
     current = NULL;
     counter = 0;
     timeout = 0;
+    screen_active = false;
+    saving_timeout = 0;
+}
+
+void Menu::Init()
+{
+    sh.SetMethod(Play);
+    sh.SetArg(this);
+    sh.SetPeriodMilliseconds(50);
+    sh.SetType(PERIODIC);
+
+    sh.Register();
+    current = createScreens();
+
+
+    palSetPadMode(BUTTON_ENTER_PORT,BUTTON_ENTER_PIN, PAL_MODE_INPUT_PULLUP);
+    palSetPadMode(BUTTON_LEFT_PORT,BUTTON_LEFT_PIN, PAL_MODE_INPUT_PULLUP);
+    palSetPadMode(BUTTON_RIGHT_PORT,BUTTON_RIGHT_PIN, PAL_MODE_INPUT_PULLUP);
+
+    ma_init();
+    config_retrieve();
 }
 
 void Menu::Play(void * self)
@@ -34,99 +76,80 @@ void Menu::Play(void * self)
     uint8_t b = (m->button_old ^ 0b111) & button;
     m->button_old = button;
 
-    //process menu
-    if (m->menu_active)
+    if (m->machine == SAVING)
     {
-        //screen handles events and printing its data
-        if (m->screen_active)
-        {
-            ma_clear_screen();
-            m->current->handle(b);
-            ma_buffer_flush();
-        }
-        //screen is not active - label is handled by Menu
-        else if (m->current)
-        {
-            ma_clear_screen();
-            print (m->current->p.label);
-            ma_buffer_flush();
-        }
+        matrix.enable(true);
+        matrix.put("Saving !");
 
-        //brighntness flashing variable - used as a selected character highlighting
-        if (cnt++ > 4)
+        if (m->saving_timeout++ > 30)
         {
-            cnt = 0;
-            if (m->current->selected)
-                flash = flash == 2 ? 7 : 2;
-            else
-                flash = 2;
+            m->saving_timeout = 0;
+            m->machine = CLOCKS;
         }
-
-        //go through the screens and (de)activate them
-        //deactivate
-        if (button == (KEY_RIGHT  | KEY_LEFT) &&   (m->screen_active))
-        {
-            m->screen_active = false;
-            m->current->selected = false;
-
-            //save components data to temporary configration table
-        }
-        //select next screen
-        else if (b == KEY_RIGHT&& !m->screen_active)
-        {
-            m->current = m->current->next;
-        }
-        //select previous screen;
-        else if (b == KEY_LEFT&& !m->screen_active)
-        {
-            m->current = m->current->prev;
-        }
-        //enter the screen
-        else if (b == KEY_ENTER )
-        {
-            m->screen_active = true;
-        }
-
-        //auto get out after 1/2 of minute if user is inactive
-        if (m->timeout++ > 20 * 30)
-        {
-            m->screen_active = false;
-            m->current->selected = false;
-            m->menu_active = false;
-            m->timeout = 0;
-        }
-        //reset timeout timer if user does something
-        if (b)
-            m->timeout = 0;
 
     }
+    else if (m->machine == MENU)
+    {
+        //process menu
+        matrix.enable(true);
+        m->processMenu(button,b);
+    }
+    else if (m->machine == CLOCKS)
     //process clock itself
-    else
     {
-        ma_clear_screen();
-        print("Hodiny");
-
-        ma_buffer_flush();
+        //matrix.put("Hodiny");
+        //matrix.enable(false);
+        //ma_time_loop(1);
+        char buffer[20];
+        rtc_time_t t;
+        rtc_control_GetTime(&t);
+        piris::chsprintf(buffer,"%2d:%.2d:%.2d", t.hours,t.minutes,t.seconds );
+        matrix.put(buffer, NULL);
     }
 
-    if ((button == (KEY_RIGHT  | KEY_LEFT)))
+    //escape from menu or enter to menu
+    if ((button == (KEY_RIGHT  | KEY_LEFT)) && m->machine != SAVING)
     {
         //get out of menu after one second of holding
         //or enable menu after one second
         if (m->counter++ > 20)
         {
             m->counter = 0;
-            m->menu_active = !m->menu_active;
+            if (m->machine == CLOCKS)
+            {
+                m->machine = MENU;
+            }
+            else if (m->machine == MENU)
+            {
+                m->machine = CLOCKS;
+            }
 
-            if (!m->menu_active)
+            if (m->machine == CLOCKS)
             {
                 //save temporary configuration to working configuration if changed and save to EEPROM
                 //print changes saved
+                fillStruct(&(m->configuration_temp));
+
+                //if changed - save
+                if (memcmp(&(m->configuration_temp), &global_configuration, sizeof(configuration_t)))
+                {
+                    memcpy(&global_configuration, &(m->configuration_temp),sizeof(configuration_t));
+                    config_save();
+                    m->machine = SAVING;
+                    //save
+                }
+                else
+                {
+                    //do nothing
+                }
+
             }
-            else
+            else if(m->machine == MENU)
             {
                 //fill components data from config structure
                 //copy configuration to temporary struct
+                memcpy (&(m->configuration_temp), &global_configuration, sizeof(configuration_t));
+                m->fillComponents(&(m->configuration_temp));
             }
         }
     }
@@ -135,259 +158,158 @@ void Menu::Play(void * self)
         //start counting from zero when released
         m->counter = 0;
     }
-}
 
-void Menu::Init()
-{
-    sh.SetMethod(Play);
-    sh.SetArg(this);
-    sh.SetPeriodMilliseconds(50);
-    sh.SetType(PERIODIC);
-
-    sh.Register();
-
-    current = createScreens();
-
-    palSetPadMode(BUTTON_ENTER_PORT,BUTTON_ENTER_PIN, PAL_MODE_INPUT_PULLUP);
-    palSetPadMode(BUTTON_LEFT_PORT,BUTTON_LEFT_PIN, PAL_MODE_INPUT_PULLUP);
-    palSetPadMode(BUTTON_RIGHT_PORT,BUTTON_RIGHT_PIN, PAL_MODE_INPUT_PULLUP);
-
-}
-
-void Menu::print(const char *str, const uint8_t * bright)
-{
-    uint16_t x = 50;
-    uint16_t y = 1;
-    piris::PFont * f = &piris::PFont::terminus12;
-    uint8_t b;
-
-    while(*str)
+    m->screen_active_edge = false;
+    if (m->screen_active != m->screen_active_old)
     {
-        if (bright)
+        m->screen_active_edge = m->screen_active && !m->screen_active_old;
+        m->screen_active_old = m->screen_active;
+    }
+}
+
+void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
+{
+    //screen handles events and printing its data
+    if (screen_active)
+    {
+        if (current == &setup_time  && screen_active_edge)
         {
-            b = *bright++;
+            rtc_time_t t;
+            rtc_control_GetTime(&t);
+            config_time_t ct;
+            ct.hours = t.hours;
+            ct.minutes = t.minutes;
+            Menu::time2str(&setup_time, ct);
         }
+
+        //ma_clear_screen();
+        current->handle(button_rising_edge);
+        //ma_buffer_flush();
+    }
+    //screen is not active - label is handled by Menu
+    else if (current)
+    {
+        //ma_clear_screen();
+        matrix.put(current->p.label);
+        //ma_buffer_flush();
+    }
+
+    //brighntness flashing variable - used as a selected character highlighting
+    if (cnt++ > 4)
+    {
+        cnt = 0;
+        if (current->selected)
+            flash = flash == 2 ? 7 : 2;
         else
-        {
-            b = 7;
-        }
-
-        ma_putchar(*str++,x,y,f,b);
-        x -= f->width();
+            flash = 2;
     }
+
+    //go through the screens and (de)activate them
+    //deactivate
+    if (button == (KEY_RIGHT  | KEY_LEFT) &&   (screen_active))
+    {
+        screen_active = false;
+        current->selected = false;
+
+        //save components data to temporary configration table
+    }
+    //select next screen
+    else if (button_rising_edge == KEY_RIGHT && !screen_active)
+    {
+        current = current->next;
+    }
+    //select previous screen;
+    else if (button_rising_edge == KEY_LEFT&& !screen_active)
+    {
+        current = current->prev;
+    }
+    //enter the screen
+    else if (button_rising_edge == KEY_ENTER )
+    {
+        screen_active = true;
+    }
+
+    //auto get out after 1/2 of minute if user is inactive
+    if (timeout++ > 20 * 30)
+    {
+        screen_active = false;
+        current->selected = false;
+        machine = CLOCKS;
+        timeout = 0;
+    }
+    //reset timeout timer if user does something
+    if (button_rising_edge)
+        timeout = 0;
 }
 
-
-
-
-Screen::Screen(const properties_t &props):
-    p(props),
-    c(NULL)
+void Menu::num2str(Screen *scr, uint8_t num)
 {
-    index = 0;
-    selected = false;
+    scr->p.data[0] = num % 10;
+    scr->p.data[1] = (num / 10) % 10;
+    scr->p.data[2] = (num / 100) % 10;
+    scr->number = num;
 }
 
-void Screen::pairNext(Screen *Next)
+void Menu::time2str(Screen *scr, const config_time_t &t)
 {
-    next = Next;
-    Next->prev = this;
+    scr->hours = t.hours;
+    scr->minutes = t.minutes;
+
+    scr->p.data[0] = t.hours / 10;
+    scr->p.data[1] = t.hours % 10;
+    scr->p.data[2] = t.minutes / 10;
+    scr->p.data[3] = t.minutes % 10;
 }
 
-//handle button events
-void Screen::handle(uint8_t buttons)
+void Menu::fillComponents(const configuration_t *c)
 {
-    char buffer[10];
-    uint8_t bright[10];
-    memset (bright, 7,10);
-    bool was_selected = selected;
+    time_source.p.data[0] = c->source;
+    num2str(&luminance_max, c->maxLuminance);
+    num2str(&luminance_min, c->minLuminance);
+    num2str(&photo_night, c->photoNight);
+    num2str(&photo_day, c->photoDay);
+    photoTime.p.data[0] = c->switch_type;
+    time2str(&toDay, c->toDay);
+    time2str(&toNight, c->toNight);
 
-    //go through all characters
-    if (!selected)
-    {
-        if (buttons == KEY_RIGHT)
-            index < p.items_count - 1 ? index++ : index =0;
-        else if (buttons == KEY_LEFT)
-            if (p.items_count == 32)
-            {
-                index > 0 ? index-- : index = 0;
-            }
-            else
-            {
-                index > 0 ? index-- : index = p.items_count - 1;
-            }
-
-        else if (buttons == KEY_ENTER)
-            selected = true;
-    }
-
-
-    //render current time
-    if (p.items_count == 4)
-    {
-        //fill hours/minutes frome elsewhere - saved and RTC
-        //probably arbitrary pointer to user function
-        piris::chsprintf(buffer, "%.2d:%.2d",hours,minutes);
-
-        uint8_t inc = index > 1 ? 1 : 0;
-        if (was_selected)
-        {
-            time(buttons);
-        }
-        bright[index + inc] = Menu::flash;
-        Menu::print(buffer,bright);
-    }
-    //combobox
-    else if (p.items_count == 1)
-    {
-        chDbgAssert(c, "No combo box defined");
-        if (was_selected)
-        {
-            combobox(buttons);
-            memset(bright, Menu::flash, sizeof(bright));
-        }
-        Menu::print(c->table[(uint8_t)p.data[index]],bright);
-    }
-    //text
-    else if (p.items_count == 32)
-    {
-        //shift it according index
-        //index in middle
-        uint8_t idx ;
-        if (index < 3)
-        {
-            idx = 0;
-        }
-        else
-        {
-            idx = index - 3;
-        }
-
-        strcpy(buffer,p.data + idx);
-        if (was_selected)
-        {
-            text(buttons);
-        }
-        bright[index - idx] = Menu::flash;
-        Menu::print(buffer,bright);
-
-    }
-    //number
-    else if (p.items_count == 3)
-    {
-        piris::chsprintf(buffer, "%.3d", number);
-        if (was_selected)
-        {
-            numberHandle(buttons, 100);
-        }
-        bright[index] = Menu::flash;
-        Menu::print(buffer,bright);
-    }
-
-
+    //password and ssid are directly passed as pointer
+    //current time is transfered elsewhere
 }
 
-
-void Screen::time(uint8_t buttons)
+void Menu::fillStruct(configuration_t *c)
 {
-    uint8_t table_time[4] = {2, 9,5,9};
-    if (p.data[0] == 2)
-        table_time[1] = 3;
-    if (p.data[1] > 3)
-        table_time[0] = 1;
+    c->source = time_source.p.data[0];
+    c->switch_type = photoTime.p.data[0];
+    c->maxLuminance = luminance_max.number;
+    c->minLuminance = luminance_min.number;
+    c->photoDay = photo_day.number;
+    c->photoNight = photo_night.number;
+    c->toDay.hours = toDay.hours;
+    c->toDay.minutes = toDay.minutes;
+    c->toNight.hours = toNight.hours;
+    c->toNight.minutes = toNight.minutes;
 
-    if (buttons == KEY_RIGHT)
-    {
-        p.data[index] = p.data[index] < 0 + table_time[index]  ? p.data[index]+1 : 0;
-    }
-    else if (buttons == KEY_LEFT)
-    {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : table_time[index]  + 0;
-    }
-
-    hours = p.data[1]  + (p.data[0] )*10;
-    minutes = p.data[3]  + (p.data[2] )*10;
-
-    if (buttons == KEY_ENTER)
-    {
-        //save values elsewhere (rtc or flash table) - probably done by callback
-        selected = false;
-    }
+    //password and ssid are directly passed as pointer
+    //current time is transfered elsewhere
 }
 
-void Screen::combobox(uint8_t buttons)
+Screen * Menu::createScreens()
 {
-    if (buttons == KEY_RIGHT)
-    {
-        p.data[index] = p.data[index] < c->count - 1  ?  p.data[index] + 1 : 0;
-    }
-    else if (buttons == KEY_LEFT)
-    {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : c->count - 1;
-    }
-    else if (buttons == KEY_ENTER)
-    {
-        //save
-        selected = false;
-    }
-
-}
+    setup_time.pairNext(&time_source);
+    time_source.pairNext(&wifi_ssid);
+    wifi_ssid.pairNext(&wifi_pass);
+    wifi_pass.pairNext(&luminance_min);
+    luminance_min.pairNext(&luminance_max);
+    luminance_max.pairNext(&photo_day);
+    photo_day.pairNext(&photo_night);
+    photo_night.pairNext(&photoTime);
+    photoTime.pairNext(&toDay);
+    toDay.pairNext(&toNight);
+    toNight.pairNext(&setup_time);
 
 
-void Screen::numberHandle(uint8_t buttons, uint16_t maximum)
-{
-    uint8_t modulo = 0;
-    int8_t i = index;
-    do
-    {
-        modulo = maximum % 10;
-        maximum = maximum / 10;
-        modulo = modulo == 0 ? 9 : modulo;
-    } while (i-- > 0);
+    time_source.setCombo(&c1);
+    photoTime.setCombo(&c2);
 
-
-    if (buttons == KEY_RIGHT)
-    {
-        p.data[index] = p.data[index] < modulo  ?  p.data[index] + 1 : 0;
-    }
-    else if (buttons == KEY_LEFT)
-    {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : modulo;
-    }
-
-    number = p.data[2] + 10 * p.data[1] + 100 * p.data[0];
-    if (buttons == KEY_ENTER)
-    {
-        //save
-        selected = false;
-    }
-}
-
-void Screen::text(uint8_t buttons)
-{
-    char data = p.data[index];
-    if (buttons == KEY_RIGHT)
-    {
-        p.data[index] = data < 126 ? data+1 : 31;
-        p.data[index] = (data > 126)  | (data < 31) ? 33 : data;
-    }
-    else if (buttons == KEY_LEFT)
-    {
-        p.data[index] = data > 31 ?  data-1  : 126;
-        p.data[index] = data < 31 ?  126 : data;
-    }
-    else if (buttons == KEY_ENTER)
-    {
-        //save
-        //31 is end - and remove data after
-        char * d = strchr(p.data, 31);
-        if (d)
-        {
-            uint8_t sze = strlen(d);
-            sze = sze < 10 ? sze : 10;
-            memset(d,0,sze);
-
-        }
-        selected = false;
-    }
+    return &setup_time;
 }

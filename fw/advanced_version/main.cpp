@@ -21,6 +21,7 @@
 #include "matrix_abstraction.h"
 
 #include "menu.h"
+#include "rtc_control.h"
 
 static void blik(arg_t);
 static void cb(arg_t);
@@ -48,18 +49,13 @@ int main(void)
     //ma_select_function(DAY_TIME);
 
     menu.Init();
-/*
-	s2.Register();
-*/
-    //matrix_demo();
+    rtc_control_Init();
+
 	while (TRUE)
 	{
-
-
         Scheduler::Play();
         sysTime = chVTGetSystemTime();
         chThdSleepMilliseconds(1);
-        asm("nop");
 	}
 
 

@@ -14,6 +14,7 @@
 #include "scheduler.h"
 #include <string.h>
 #include "pfont.h"
+#include "rtc_control.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -87,22 +88,16 @@ static uint16_t bdak;
 
 void ma_time_loop(uint8_t day)
 {
-    RTCDateTime t;
-    rtcGetTime(&RTCD1, &t);
-	uint32_t sec, min, hour, mod;
+    ma_clear_screen();
+    rtc_time_t t;
+    rtc_control_GetTime(&t);
+    uint32_t sec, min, hour;
 
 	uint8_t temp;
 
-    mod = t.millisecond / 1000;
-
-	sec = mod % 60;
-	mod = mod / 60;
-
-	min = mod % 60;
-	mod = mod / 60;
-
-	hour = mod % 24;
-	//hour += 2;
+    sec = t.seconds;
+    min = t.minutes;
+    hour = t.hours;
 
     animated_character_t * c = time_c;
 	c->character = sec % 10 + 48;
@@ -189,6 +184,7 @@ void ma_time_loop(uint8_t day)
                 0, &piris::PFont::terminus16, 7);
 		ma_putchar_animated_number(C_DOUBLE_DOT1);
 	}
+    ma_buffer_flush();
 }
 
 static uint8_t mode_change_sequence = 0;
@@ -205,7 +201,7 @@ void ma_select_function(function_t f)
 void ma_cb(arg_t b)
 {
 	(void) b;
-	static function_t old_f;
+    static function_t old_f;
 	static uint16_t work_bright = 0;
 
 	//static uint16_t brightness = 200;
@@ -254,7 +250,6 @@ void ma_cb(arg_t b)
 	else if (old_f == NIGHT_TIME)
 		ma_time_loop(0);
 
-//memset(buffer, 0xff, MATRIX_ARRAY_COLS * MATRIX_ROWS * 2 * MATRIX_BRIGHT);
     ma_buffer_flush();
 }
 
@@ -265,9 +260,9 @@ void ma_buffer_flush()
 
 void ma_init(void)
 {
-	static delay_t d;
-	shFillStruct(&d, ma_cb, NULL, MS2ST(20), PERIODIC);
-	shRegisterStruct(&d);
+    //static delay_t d;
+    //shFillStruct(&d, ma_cb, NULL, MS2ST(20), PERIODIC);
+    //shRegisterStruct(&d);
 
     animated_character_t * c = time_c;
 	int i;
