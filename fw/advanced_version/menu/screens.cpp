@@ -249,35 +249,37 @@ void TimeScreen::time(uint8_t buttons)
  *******************************************************/
 ComboScreen::ComboScreen(const properties_t &p):
     Screen(p),
-    c(NULL)
+    table(NULL),
+    count(0),
+    comboIndex(p.data[0])
 {
     type = COMBO;
 }
 
 void ComboScreen::subHandle(uint8_t buttons, bool was_selected)
 {
-    char buffer[BUFFER_SIZE];
+    //char buffer[BUFFER_SIZE];
     uint8_t bright[BUFFER_SIZE];
     memset(bright,7,BUFFER_SIZE);
 
-    chDbgAssert(c, "No combo box defined");
+    chDbgAssert(table, "No combo box defined");
     if (was_selected)
     {
         combobox(buttons);
         memset(bright, Menu::flash, sizeof(bright));
     }
-    matrix.put(c->table[(uint8_t)p.data[index]],bright);
+    matrix.put(table[(uint8_t)comboIndex],bright);
 }
 
 void ComboScreen::combobox(uint8_t buttons)
 {
     if (buttons == KEY_RIGHT)
     {
-        p.data[index] = p.data[index] < c->count - 1  ?  p.data[index] + 1 : 0;
+        comboIndex = comboIndex < count - 1  ?  comboIndex + 1 : 0;
     }
     else if (buttons == KEY_LEFT)
     {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : c->count - 1;
+        comboIndex = comboIndex > 0 ?  comboIndex  : count - 1;
     }
     else if (buttons == KEY_ENTER)
     {

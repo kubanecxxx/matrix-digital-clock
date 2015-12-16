@@ -26,11 +26,6 @@ DECL_SCREEN(Combo, photoTime , "Switch type" , 1);
 DECL_SCREEN(Time, toDay, "Day time" , 4 );
 DECL_SCREEN(Time, toNight, "Night time" , 4 );
 
-static const char * combo1[] = {"Manual", "DCF", "Wifi"};
-static const Screen::combo_t c1 = {3, combo1};
-
-static const char * combo2[] = {"Time" , "Opto"};
-static const Screen::combo_t c2 = {2, combo2};
 
 Menu::Menu()
 {
@@ -289,6 +284,10 @@ void Menu::fillStruct(configuration_t *c)
     //current time is transfered elsewhere
 }
 
+static const char * combo1[] = {"Manual", "DCF", "Wifi"};
+static const char * combo2[] = {"Time" , "Opto"};
+
+
 Screen * Menu::createScreens()
 {
     setup_time.pairNext(&time_source);
@@ -304,8 +303,8 @@ Screen * Menu::createScreens()
     toNight.pairNext(&setup_time);
 
 
-    time_source.setCombo(&c1);
-    photoTime.setCombo(&c2);
+    time_source.setCombo(combo1,3);
+    photoTime.setCombo(combo2,2);
 
     return &setup_time;
 }

@@ -15,12 +15,6 @@ public:
 
     } properties_t;
 
-    typedef struct
-    {
-        uint8_t count;
-        const char ** table;
-    } combo_t;
-
     typedef enum {TIME, TEXT, COMBO, NUMBER} type_t;
 
     Screen(const properties_t & props);
@@ -90,13 +84,15 @@ class ComboScreen : public Screen
 {
 public:
     ComboScreen(const properties_t & p );
-    void setCombo(const combo_t * combo) {c = combo;}
+    void setCombo(const char ** table, uint8_t count) {this->table = table; this->count = count;}
 
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
 private:
     void combobox(uint8_t buttons);
-    const combo_t * c;
+    const char ** table;
+    uint8_t count;
+    char & comboIndex;
 };
 
 //*********************** Helper macro ********************
