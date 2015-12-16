@@ -59,7 +59,7 @@ public:
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
 private:
-    void numberHandle(uint8_t, const uint16_t  maximum);
+    void numberHandle(uint8_t buttons, uint16_t minimum , uint16_t  maximum);
 
 };
 

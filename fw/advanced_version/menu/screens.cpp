@@ -96,18 +96,16 @@ void TextScreen::subHandle(uint8_t buttons, bool was_selected)
 
 void TextScreen::text(uint8_t buttons)
 {
-    char data = p.data[index];
+    char & data(p.data[index]);
     if (buttons == KEY_RIGHT)
     {
         data = data < 126 ? data+1 : 31;
         data = (data > 126)  | (data < 31) ? 33 : data;
-        p.data[index] = data;
     }
     else if (buttons == KEY_LEFT)
     {
         data = data > 31 ?  data-1  : 126;
         data = data < 31 ?  126 : data;
-        p.data[index] = data;
     }
     else if (buttons == KEY_ENTER)
     {
@@ -143,34 +141,37 @@ void NumberScreen::subHandle(uint8_t buttons, bool was_selected)
     piris::chsprintf(buffer, "%.3d", number);
     if (was_selected)
     {
-        numberHandle(buttons, 100);
+        numberHandle(buttons,0, 100);
     }
     bright[index] = Menu::flash;
     matrix.put(buffer,bright);
 }
 
-void NumberScreen::numberHandle(uint8_t buttons, uint16_t maximum)
+void NumberScreen::numberHandle(uint8_t buttons, uint16_t minimum, uint16_t maximum)
 {
-    uint8_t modulo = 0;
-    int8_t i = index;
-    do
-    {
-        modulo = maximum % 10;
-        maximum = maximum / 10;
-        modulo = modulo == 0 ? 9 : modulo;
-    } while (i-- > 0);
-
+    char & d(p.data[index]);
 
     if (buttons == KEY_RIGHT)
     {
-        p.data[index] = p.data[index] < modulo  ?  p.data[index] + 1 : 0;
+        d++;
     }
     else if (buttons == KEY_LEFT)
     {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : modulo;
+        d--;
     }
 
-    number = p.data[2] + 10 * p.data[1] + 100 * p.data[0];
+    //create number and do boundary on it
+    //atoi
+    uint8_t len = strlen(p.data);
+    number = 0;
+    for (int i = 0 ; i < len; i++)
+    {
+        number = p.data[i]  + 10 * number ;
+    }
+
+    number = number <= maximum ? number : minimum;
+    number = number >= minimum ? number : maximum;
+
     if (buttons == KEY_ENTER)
     {
         //save
