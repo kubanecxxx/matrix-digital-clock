@@ -10,6 +10,8 @@
 #define KEY_ENTER 4
 
 class Screen;
+class TimeScreen;
+class NumberScreen;
 
 class Menu
 {
@@ -21,8 +23,8 @@ public:
     static uint8_t flash;
     static uint8_t cnt;
 
-    static void num2str(Screen *scr, uint8_t num);
-    static void time2str(Screen *scr, const config_time_t & t);
+    static void num2str(NumberScreen *scr, uint8_t num);
+    static void time2str(TimeScreen *scr, const config_time_t & t);
 
     typedef enum {CLOCKS,SAVING, MENU} state_t;
 

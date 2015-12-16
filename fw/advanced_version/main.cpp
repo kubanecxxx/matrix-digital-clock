@@ -141,3 +141,10 @@ void config_matrix()
 	matrix_start();
 }
 #endif
+
+
+extern "C" void __cxa_pure_virtual(void)
+{
+    asm("bkpt");
+    while(1);
+}

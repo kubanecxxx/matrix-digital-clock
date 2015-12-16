@@ -96,7 +96,9 @@ set (CHIP "STM32F100C8")
 #set (CHIP "STM32F407VG")
 # chibiOS stable v3.0.x branch commit ed8937f718ace39051768bb45c66a195b48270b3
 set (CHIBIOS_DIR "/home/kubanec/workspaces/chibios_3stable")
-set (CHIBIOS_DIR "/home/kuba/chibi/ChibiOS")
+if (NOT EXISTS ${CHIBIOS_DIR})
+	set (CHIBIOS_DIR "/home/kuba/chibi/ChibiOS")
+endif()
 #set (BOARD "ST_STM32F4_DISCOVERY")
 
 set (FLASH_SIZE "64k")

@@ -14,17 +14,17 @@ uint8_t Menu::flash = 2;
 uint8_t Menu::cnt = 0;
 configuration_t  Menu::configuration_temp;
 
-DECL_SCREEN(setup_time, "Time",4);
-DECL_SCREEN(time_source,"Source",1);
-DECL_SCREEN_CUSTOM(wifi_ssid,"SSID",32,Menu::configuration_temp.ssid);
-DECL_SCREEN_CUSTOM(wifi_pass,"Password",32,Menu::configuration_temp.password);
-DECL_SCREEN(luminance_max,"Max luminance",3);
-DECL_SCREEN(luminance_min,"Min luminance",3);
-DECL_SCREEN(photo_day, "Day opto", 3);
-DECL_SCREEN(photo_night, "Night opto" , 3);
-DECL_SCREEN(photoTime , "Switch type" , 1);
-DECL_SCREEN(toDay, "Day time" , 4 );
-DECL_SCREEN(toNight, "Night time" , 4 );
+DECL_SCREEN(Time,setup_time, "Time",4);
+DECL_SCREEN(Combo,time_source,"Source",1);
+DECL_SCREEN_CUSTOM(Text,wifi_ssid,"SSID",32,Menu::configuration_temp.ssid);
+DECL_SCREEN_CUSTOM(Text,wifi_pass,"Password",32,Menu::configuration_temp.password);
+DECL_SCREEN(Number,luminance_max,"Max luminance",3);
+DECL_SCREEN(Number,luminance_min,"Min luminance",3);
+DECL_SCREEN(Number,photo_day, "Day opto", 3);
+DECL_SCREEN(Number,photo_night, "Night opto" , 3);
+DECL_SCREEN(Combo, photoTime , "Switch type" , 1);
+DECL_SCREEN(Time, toDay, "Day time" , 4 );
+DECL_SCREEN(Time, toNight, "Night time" , 4 );
 
 static const char * combo1[] = {"Manual", "DCF", "Wifi"};
 static const Screen::combo_t c1 = {3, combo1};
@@ -182,16 +182,12 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
             Menu::time2str(&setup_time, ct);
         }
 
-        //ma_clear_screen();
         current->handle(button_rising_edge);
-        //ma_buffer_flush();
     }
     //screen is not active - label is handled by Menu
     else if (current)
     {
-        //ma_clear_screen();
         matrix.put(current->p.label);
-        //ma_buffer_flush();
     }
 
     //brighntness flashing variable - used as a selected character highlighting
@@ -242,7 +238,7 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
         timeout = 0;
 }
 
-void Menu::num2str(Screen *scr, uint8_t num)
+void Menu::num2str(NumberScreen *scr, uint8_t num)
 {
     scr->p.data[0] = num % 10;
     scr->p.data[1] = (num / 10) % 10;
@@ -250,7 +246,7 @@ void Menu::num2str(Screen *scr, uint8_t num)
     scr->number = num;
 }
 
-void Menu::time2str(Screen *scr, const config_time_t &t)
+void Menu::time2str(TimeScreen *scr, const config_time_t &t)
 {
     scr->hours = t.hours;
     scr->minutes = t.minutes;
