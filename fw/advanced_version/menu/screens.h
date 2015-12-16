@@ -7,17 +7,10 @@
 class Screen
 {
 public:
-    typedef struct
-    {
-        const char * label;
-        uint8_t items_count;
-        char * data;
-
-    } properties_t;
-
     typedef enum {TIME, TEXT, COMBO, NUMBER} type_t;
 
-    Screen(const properties_t & props);
+    Screen(const char * lab);
+
     void pairNext(Screen * next);
 
     friend class Menu;
@@ -26,12 +19,16 @@ private:
     Screen * prev;
     void handle(uint8_t buttons);
 
+    const char * label;
+
+
 protected:
+    uint8_t index;
     bool selected;
     type_t type;
-    uint8_t index;
+    uint8_t items_count;
 
-    const properties_t & p;
+
     static Screen * setupTime;
 
     virtual void subHandle(uint8_t buttons, bool was_selected) = 0;
@@ -41,19 +38,20 @@ protected:
 class TextScreen : public Screen
 {
 public:
-    TextScreen(const properties_t & p );
+    TextScreen(const char * lab, char * data, uint8_t count);
 
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
 private:
     void text(uint8_t buttons);
+    char * data;
 };
 
 //*********************** Number screen ********************
 class NumberScreen : public Screen
 {
 public:
-    NumberScreen(const properties_t & p );
+    NumberScreen(const char * lab);
     uint16_t number;
 
 protected:
@@ -67,15 +65,14 @@ private:
 class TimeScreen : public Screen
 {
 public:
-    TimeScreen(const properties_t & p );
+    TimeScreen(const char * lab );
     uint8_t hours;
     uint8_t minutes;
 
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
 
-private:
-    void time(uint8_t buttons);
+
 
 };
 
@@ -83,8 +80,9 @@ private:
 class ComboScreen : public Screen
 {
 public:
-    ComboScreen(const properties_t & p );
+    ComboScreen(const char * lab );
     void setCombo(const char ** table, uint8_t count) {this->table = table; this->count = count;}
+    uint8_t comboIndex;
 
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
@@ -92,18 +90,15 @@ private:
     void combobox(uint8_t buttons);
     const char ** table;
     uint8_t count;
-    char & comboIndex;
+
 };
 
 //*********************** Helper macro ********************
 
-#define DECL_SCREEN(type, name, label, count) \
-    static char name##_buffer[count]; \
-    static const Screen::properties_t name##_props = {label, count ,name##_buffer}; \
-    static type##Screen name(name##_props)
+#define DECL_SCREEN(type, name, label) \
+    static type##Screen name(label)
 
 #define DECL_SCREEN_CUSTOM(type,name, label, count, dta) \
-    static const Screen::properties_t name##_props = {label, count ,dta}; \
-    static type##Screen name(name##_props)
+    static type##Screen name(label, dta, count)
 
 #endif

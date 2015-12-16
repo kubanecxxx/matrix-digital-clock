@@ -13,11 +13,12 @@ Screen * Screen::setupTime;
 /********************************************************
  * base class
  *******************************************************/
-Screen::Screen(const properties_t &props):
-    p(props)
+Screen::Screen(const char *lab):
+    label(lab),
+    index(0),
+    selected(false)
 {
-    index = 0;
-    selected = false;
+
 }
 
 void Screen::pairNext(Screen *Next)
@@ -35,7 +36,7 @@ void Screen::handle(uint8_t buttons)
     if (!selected)
     {
         if (buttons == KEY_RIGHT)
-            index < p.items_count - 1 ? index++ : index =0;
+            index < items_count - 1 ? index++ : index =0;
         else if (buttons == KEY_LEFT)
             if (type == TEXT)
             {
@@ -43,7 +44,7 @@ void Screen::handle(uint8_t buttons)
             }
             else
             {
-                index > 0 ? index-- : index = p.items_count - 1;
+                index > 0 ? index-- : index = items_count - 1;
             }
 
         else if (buttons == KEY_ENTER)
@@ -57,10 +58,12 @@ void Screen::handle(uint8_t buttons)
 /********************************************************
  * text screen
  *******************************************************/
-TextScreen::TextScreen(const properties_t &p):
-    Screen(p)
+TextScreen::TextScreen(const char * p, char * dat, uint8_t count):
+    Screen(p),
+    data(dat)
 {
     type = TEXT;
+    items_count = count;
 }
 
 void TextScreen::subHandle(uint8_t buttons, bool was_selected)
@@ -84,7 +87,7 @@ void TextScreen::subHandle(uint8_t buttons, bool was_selected)
         idx = index - 3;
     }
 
-    memcpy(buffer, p.data + idx , 9);
+    memcpy(buffer, data + idx , 9);
     buffer[10] = 0;
     if (was_selected)
     {
@@ -96,7 +99,7 @@ void TextScreen::subHandle(uint8_t buttons, bool was_selected)
 
 void TextScreen::text(uint8_t buttons)
 {
-    char & data(p.data[index]);
+    char & data (this->data[index]);
     if (buttons == KEY_RIGHT)
     {
         data = data < 126 ? data+1 : 31;
@@ -111,7 +114,7 @@ void TextScreen::text(uint8_t buttons)
     {
         //save
         //31 is end - and remove data after
-        char * d = strchr(p.data, 31);
+        char * d = strchr(this->data, 31);
         if (d)
         {
             uint8_t sze = strlen(d);
@@ -126,31 +129,34 @@ void TextScreen::text(uint8_t buttons)
 /********************************************************
  * number screen
  *******************************************************/
-NumberScreen::NumberScreen(const properties_t &p):
+NumberScreen::NumberScreen(const char * p):
     Screen(p)
 {
     type = NUMBER;
+    items_count = 4;
 }
 
 void NumberScreen::subHandle(uint8_t buttons, bool was_selected)
 {
-    char buffer[BUFFER_SIZE];
     uint8_t bright[BUFFER_SIZE];
     memset(bright,7,BUFFER_SIZE);
+    char buffer[10];
 
-    piris::chsprintf(buffer, "%.3d", number);
     if (was_selected)
     {
         numberHandle(buttons,0, 100);
     }
+    piris::chsprintf(buffer, "%.3d", number);
     bright[index] = Menu::flash;
     matrix.put(buffer,bright);
 }
 
 void NumberScreen::numberHandle(uint8_t buttons, uint16_t minimum, uint16_t maximum)
 {
-    char & d(p.data[index]);
+    char buffer[10];
+    char & d(buffer[index]);
 
+    piris::chsprintf(buffer, "%.3d", number);
     if (buttons == KEY_RIGHT)
     {
         d++;
@@ -162,11 +168,11 @@ void NumberScreen::numberHandle(uint8_t buttons, uint16_t minimum, uint16_t maxi
 
     //create number and do boundary on it
     //atoi
-    uint8_t len = strlen(p.data);
+    uint8_t len = strlen(buffer);
     number = 0;
     for (int i = 0 ; i < len; i++)
     {
-        number = p.data[i]  + 10 * number ;
+        number = buffer[i]  + 10 * number ;
     }
 
     number = number <= maximum ? number : minimum;
@@ -182,10 +188,11 @@ void NumberScreen::numberHandle(uint8_t buttons, uint16_t minimum, uint16_t maxi
 /********************************************************
  * time screen
  *******************************************************/
-TimeScreen::TimeScreen(const properties_t &p):
+TimeScreen::TimeScreen(const char * p):
     Screen(p)
 {
     type = TIME;
+    items_count = 4;
 }
 
 void TimeScreen::subHandle(uint8_t buttons, bool was_selected)
@@ -195,71 +202,66 @@ void TimeScreen::subHandle(uint8_t buttons, bool was_selected)
     memset(bright,7,BUFFER_SIZE);
 
     //fill hours/minutes frome elsewhere - saved and RTC
-    //probably arbitrary pointer to user function
-    //render current time
-    piris::chsprintf(buffer, "%.2d:%.2d",hours,minutes);
-
     uint8_t inc = index > 1 ? 1 : 0;
     if (was_selected)
     {
-        time(buttons);
-    }
-    bright[index + inc] = Menu::flash;
-    matrix.put(buffer,bright);
-}
+        piris::chsprintf(buffer, "%.2d%.2d",hours,minutes);
+        char & d(buffer[index]);
+        uint8_t table_time[4] = {2, 9,5,9};
+        if (buffer[0] == 2)
+            table_time[1] = 3;
+        if (buffer[1] > 3)
+            table_time[0] = 1;
 
-void TimeScreen::time(uint8_t buttons)
-{
-    uint8_t table_time[4] = {2, 9,5,9};
-    if (p.data[0] == 2)
-        table_time[1] = 3;
-    if (p.data[1] > 3)
-        table_time[0] = 1;
-
-    if (buttons == KEY_RIGHT)
-    {
-        p.data[index] = p.data[index] < 0 + table_time[index]  ? p.data[index]+1 : 0;
-    }
-    else if (buttons == KEY_LEFT)
-    {
-        p.data[index] = p.data[index] > 0 ?  p.data[index]-1  : table_time[index]  + 0;
-    }
-
-    hours = p.data[1]  + (p.data[0] )*10;
-    minutes = p.data[3]  + (p.data[2] )*10;
-
-    if (buttons == KEY_ENTER)
-    {
-        //just save modified time
-        //rest is saved elsewhere
-        if (this == setupTime)
+        if (buttons == KEY_RIGHT)
         {
-            rtc_time_t t;
-            t.hours = hours;
-            t.minutes = minutes;
-            t.seconds = 0;
-            rtc_control_SetTime(&t);
+            d = d < table_time[index]  ? d+1 : 0;
+        }
+        else if (buttons == KEY_LEFT)
+        {
+            d = d > 0 ?  d-1  : table_time[index] ;
         }
 
-        selected = false;
+        hours = buffer[1]  + (buffer[0] )*10;
+        minutes = buffer[3]  + (buffer[2] )*10;
+
+        if (buttons == KEY_ENTER)
+        {
+            //just save modified time
+            //rest is saved elsewhere
+            if (this == setupTime)
+            {
+                rtc_time_t t;
+                t.hours = hours;
+                t.minutes = minutes;
+                t.seconds = 0;
+                rtc_control_SetTime(&t);
+            }
+
+            selected = false;
+        }
     }
+
+    piris::chsprintf(buffer, "%.2d:%.2d",hours,minutes);
+    bright[index + inc] = Menu::flash;
+    matrix.put(buffer,bright);
 }
 
 /********************************************************
  * combo screen
  *******************************************************/
-ComboScreen::ComboScreen(const properties_t &p):
+ComboScreen::ComboScreen(const char * p):
     Screen(p),
+    comboIndex(0),
     table(NULL),
-    count(0),
-    comboIndex(p.data[0])
+    count(0)
 {
     type = COMBO;
+    items_count = 1;
 }
 
 void ComboScreen::subHandle(uint8_t buttons, bool was_selected)
 {
-    //char buffer[BUFFER_SIZE];
     uint8_t bright[BUFFER_SIZE];
     memset(bright,7,BUFFER_SIZE);
 
@@ -269,7 +271,7 @@ void ComboScreen::subHandle(uint8_t buttons, bool was_selected)
         combobox(buttons);
         memset(bright, Menu::flash, sizeof(bright));
     }
-    matrix.put(table[(uint8_t)comboIndex],bright);
+    matrix.put(table[comboIndex],bright);
 }
 
 void ComboScreen::combobox(uint8_t buttons)

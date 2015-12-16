@@ -14,17 +14,17 @@ uint8_t Menu::flash = 2;
 uint8_t Menu::cnt = 0;
 configuration_t  Menu::configuration_temp;
 
-DECL_SCREEN(Time,setup_time, "Time",4);
-DECL_SCREEN(Combo,time_source,"Source",1);
+DECL_SCREEN(Time,setup_time, "Time");
+DECL_SCREEN(Combo,time_source,"Source");
 DECL_SCREEN_CUSTOM(Text,wifi_ssid,"SSID",32,Menu::configuration_temp.ssid);
 DECL_SCREEN_CUSTOM(Text,wifi_pass,"Password",32,Menu::configuration_temp.password);
-DECL_SCREEN(Number,luminance_max,"Max luminance",4);
-DECL_SCREEN(Number,luminance_min,"Min luminance",4);
-DECL_SCREEN(Number,photo_day, "Day opto", 4);
-DECL_SCREEN(Number,photo_night, "Night opto" , 4);
-DECL_SCREEN(Combo, photoTime , "Switch type" , 1);
-DECL_SCREEN(Time, toDay, "Day time" , 4 );
-DECL_SCREEN(Time, toNight, "Night time" , 4 );
+DECL_SCREEN(Number,luminance_max,"Max luminance");
+DECL_SCREEN(Number,luminance_min,"Min luminance");
+DECL_SCREEN(Number,photo_day, "Day opto");
+DECL_SCREEN(Number,photo_night, "Night opto");
+DECL_SCREEN(Combo, photoTime , "Switch type" );
+DECL_SCREEN(Time, toDay, "Day time" );
+DECL_SCREEN(Time, toNight, "Night time"  );
 
 
 Menu::Menu()
@@ -171,10 +171,9 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
         {
             rtc_time_t t;
             rtc_control_GetTime(&t);
-            config_time_t ct;
-            ct.hours = t.hours;
-            ct.minutes = t.minutes;
-            Menu::time2str(&setup_time, ct);
+
+            setup_time.hours = t.hours;
+            setup_time.minutes = t.minutes;
         }
 
         current->handle(button_rising_edge);
@@ -182,7 +181,7 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
     //screen is not active - label is handled by Menu
     else if (current)
     {
-        matrix.put(current->p.label);
+        matrix.put(current->label);
     }
 
     //brighntness flashing variable - used as a selected character highlighting
@@ -233,35 +232,18 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
         timeout = 0;
 }
 
-void Menu::num2str(NumberScreen *scr, uint8_t num)
-{
-    scr->p.data[0] = num % 10;
-    scr->p.data[1] = (num / 10) % 10;
-    scr->p.data[2] = (num / 100) % 10;
-    scr->number = num;
-}
-
-void Menu::time2str(TimeScreen *scr, const config_time_t &t)
-{
-    scr->hours = t.hours;
-    scr->minutes = t.minutes;
-
-    scr->p.data[0] = t.hours / 10;
-    scr->p.data[1] = t.hours % 10;
-    scr->p.data[2] = t.minutes / 10;
-    scr->p.data[3] = t.minutes % 10;
-}
-
 void Menu::fillComponents(const configuration_t *c)
 {
-    time_source.p.data[0] = c->source;
-    num2str(&luminance_max, c->maxLuminance);
-    num2str(&luminance_min, c->minLuminance);
-    num2str(&photo_night, c->photoNight);
-    num2str(&photo_day, c->photoDay);
-    photoTime.p.data[0] = c->switch_type;
-    time2str(&toDay, c->toDay);
-    time2str(&toNight, c->toNight);
+    time_source.comboIndex = c->source;
+    photoTime.comboIndex = c->switch_type;
+    toDay.hours = c->toDay.hours;
+    toDay.minutes = c->toDay.minutes;
+    toNight.hours = c->toNight.hours;
+    toNight.minutes = c->toNight.minutes;
+    luminance_max.number = c->maxLuminance;
+    luminance_min.number = c->minLuminance;
+    photo_day.number = c->photoDay;
+    photo_night.number = c->photoNight;
 
     //password and ssid are directly passed as pointer
     //current time is transfered elsewhere
@@ -269,8 +251,8 @@ void Menu::fillComponents(const configuration_t *c)
 
 void Menu::fillStruct(configuration_t *c)
 {
-    c->source = time_source.p.data[0];
-    c->switch_type = photoTime.p.data[0];
+    c->source = time_source.comboIndex;
+    c->switch_type = photoTime.comboIndex;
     c->maxLuminance = luminance_max.number;
     c->minLuminance = luminance_min.number;
     c->photoDay = photo_day.number;
