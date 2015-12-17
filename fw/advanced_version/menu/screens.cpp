@@ -55,6 +55,43 @@ void Screen::handle(uint8_t buttons)
 
 }
 
+uint32_t Screen::strToNum(const char *str)
+{
+    uint8_t len = strlen(str);
+    uint32_t number = 0;
+
+    for (int i = 0 ; i < len; i++)
+    {
+        if (str[i] >= '0' && str[i] <= '9')
+        {
+            number = str[i]-'0'  + 10 * number ;
+        }
+        else
+        {
+            number = -1;
+            break;
+        }
+    }
+
+    return number;
+}
+
+uint32_t Screen::power(uint8_t num, uint8_t exp)
+{
+    if (!exp)
+        return 1;
+
+    exp--;
+
+    uint32_t t = num;
+    while(exp-- )
+    {
+        t *= num;
+    }
+
+    return t;
+}
+
 /********************************************************
  * text screen
  *******************************************************/
@@ -153,30 +190,17 @@ void NumberScreen::subHandle(uint8_t buttons, bool was_selected)
 
 void NumberScreen::numberHandle(uint8_t buttons, uint16_t minimum, uint16_t maximum)
 {
-    char buffer[10];
-    char & d(buffer[index]);
-
-    piris::chsprintf(buffer, "%.3d", number);
     if (buttons == KEY_RIGHT)
     {
-        d++;
+        number += power(10,2-index);
     }
     else if (buttons == KEY_LEFT)
     {
-        d--;
+        number -= power(10,2-index);
     }
 
-    //create number and do boundary on it
-    //atoi
-    uint8_t len = strlen(buffer);
-    number = 0;
-    for (int i = 0 ; i < len; i++)
-    {
-        number = buffer[i]  + 10 * number ;
-    }
-
-    number = number <= maximum ? number : minimum;
-    number = number >= minimum ? number : maximum;
+    number = number <= maximum ? number : maximum;
+    number = number >= minimum ? number : minimum;
 
     if (buttons == KEY_ENTER)
     {
@@ -206,11 +230,12 @@ void TimeScreen::subHandle(uint8_t buttons, bool was_selected)
     if (was_selected)
     {
         piris::chsprintf(buffer, "%.2d%.2d",hours,minutes);
-        char & d(buffer[index]);
+        //char & d(buffer[index]);
+        char d = buffer[index] - '0';
         uint8_t table_time[4] = {2, 9,5,9};
-        if (buffer[0] == 2)
+        if (buffer[0] - '0' == 2)
             table_time[1] = 3;
-        if (buffer[1] > 3)
+        if (buffer[1] - '0' > 3)
             table_time[0] = 1;
 
         if (buttons == KEY_RIGHT)
@@ -222,8 +247,11 @@ void TimeScreen::subHandle(uint8_t buttons, bool was_selected)
             d = d > 0 ?  d-1  : table_time[index] ;
         }
 
-        hours = buffer[1]  + (buffer[0] )*10;
-        minutes = buffer[3]  + (buffer[2] )*10;
+        buffer[index] = d + '0';
+
+        minutes = strToNum(buffer + 2);
+        buffer[2] = 0;
+        hours = strToNum(buffer);
 
         if (buttons == KEY_ENTER)
         {
@@ -282,7 +310,7 @@ void ComboScreen::combobox(uint8_t buttons)
     }
     else if (buttons == KEY_LEFT)
     {
-        comboIndex = comboIndex > 0 ?  comboIndex  : count - 1;
+        comboIndex = comboIndex > 0 ?  comboIndex -1 : count - 1;
     }
     else if (buttons == KEY_ENTER)
     {

@@ -12,6 +12,8 @@ public:
     Screen(const char * lab);
 
     void pairNext(Screen * next);
+    static uint32_t strToNum(const char * str);
+    static uint32_t power(uint8_t num, uint8_t exp);
 
     friend class Menu;
 private:
