@@ -229,29 +229,42 @@ void TimeScreen::subHandle(uint8_t buttons, bool was_selected)
     uint8_t inc = index > 1 ? 1 : 0;
     if (was_selected)
     {
-        piris::chsprintf(buffer, "%.2d%.2d",hours,minutes);
-        //char & d(buffer[index]);
-        char d = buffer[index] - '0';
-        uint8_t table_time[4] = {2, 9,5,9};
-        if (buffer[0] - '0' == 2)
-            table_time[1] = 3;
-        if (buffer[1] - '0' > 3)
-            table_time[0] = 1;
-
         if (buttons == KEY_RIGHT)
         {
-            d = d < table_time[index]  ? d+1 : 0;
+            if (index < 2)
+            {
+                //hours
+                hours = (hours + power(10,1-index)) ;
+
+            }
+            else
+            {
+                //minutes
+                minutes = (minutes + power(10,1-(index & 1))) ;
+            }
         }
-        else if (buttons == KEY_LEFT)
+        else if ( buttons == KEY_LEFT)
         {
-            d = d > 0 ?  d-1  : table_time[index] ;
+            if (index < 2)
+            {
+                //hours
+                hours = (hours - power(10,1-index)) ;
+
+            }
+            else
+            {
+                //minutes
+                minutes = (minutes - power(10,1-(index & 1))) ;
+            }
+
         }
 
-        buffer[index] = d + '0';
+        minutes = minutes < 60 ? minutes : 59;
+        minutes = minutes > 0 ? minutes : 0;
 
-        minutes = strToNum(buffer + 2);
-        buffer[2] = 0;
-        hours = strToNum(buffer);
+        hours = hours < 24 ? hours : 23;
+        hours = hours > 0 ? hours : 0;
+
 
         if (buttons == KEY_ENTER)
         {

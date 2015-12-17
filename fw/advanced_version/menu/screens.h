@@ -68,8 +68,8 @@ class TimeScreen : public Screen
 {
 public:
     TimeScreen(const char * lab );
-    uint8_t hours;
-    uint8_t minutes;
+    int8_t hours;
+    int8_t minutes;
 
 protected:
     void subHandle(uint8_t buttons, bool was_selected);
