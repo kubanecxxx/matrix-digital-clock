@@ -112,5 +112,14 @@ void print::task()
 
 void print::enable(bool en)
 {
+    bool was = psh.IsRegistered();
+    if (was != en)
+    {
+        put("");
+        task();
+    }
+
     en ? psh.Register() : psh.Unregister();
+
+
 }

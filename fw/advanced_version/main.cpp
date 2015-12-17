@@ -45,7 +45,7 @@ int main(void)
 
     config_matrix();
     //ma_init();
-    ma_set_brightness(200);
+    ma_set_brightness(0);
     //ma_select_function(DAY_TIME);
 
     menu.Init();

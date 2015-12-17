@@ -24,6 +24,8 @@ public:
     static uint8_t cnt;
 
     typedef enum {CLOCKS,SAVING, MENU} state_t;
+    typedef enum {DAY, NIGHT, INVALID} clocks_t;
+    typedef enum {OUT, IN, FINISHED} fading_t;
 
     static configuration_t configuration_temp;
 
@@ -38,6 +40,29 @@ private:
     uint16_t timeout;
     uint16_t saving_timeout;
     state_t machine;
+    state_t old_state;
+    clocks_t current_clocks;
+    clocks_t render_clocks;
+
+    void setMode(state_t mode, clocks_t clocks = INVALID);
+
+    static void fade_cb(arg_t self);
+    void fade_cb();
+    Scheduler fade;
+    uint16_t fading_stage;
+    fading_t fading;
+
+
+    Scheduler clocks;
+    static void clocks_task(arg_t self);
+    uint8_t centr;
+
+
+
+    void pwm_control();
+    clocks_t getClockMode();
+    uint16_t brightness;
+    uint16_t brightness_new;
 
 
     void static fillComponents(const configuration_t * c);

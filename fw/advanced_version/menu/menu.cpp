@@ -26,6 +26,7 @@ DECL_SCREEN(Combo, photoTime , "Switch type" );
 DECL_SCREEN(Time, toDay, "Day time" );
 DECL_SCREEN(Time, toNight, "Night time"  );
 
+#define FADE_CONST 30
 
 Menu::Menu()
 {
@@ -35,6 +36,17 @@ Menu::Menu()
     timeout = 0;
     screen_active = false;
     saving_timeout = 0;
+
+    fade.SetMethod(fade_cb);
+    fade.SetArg(this);
+    fade.SetPeriodMilliseconds(10);
+
+    clocks.SetMethod(clocks_task);
+    clocks.SetArg(this);
+    clocks.SetPeriodMilliseconds(15);
+
+    fading_stage = 0;
+    brightness = 0;
 }
 
 void Menu::Init()
@@ -54,6 +66,27 @@ void Menu::Init()
 
     ma_init();
     config_retrieve();
+
+    old_state = (state_t)0xff;
+
+    pwm_control();
+    render_clocks = current_clocks;
+    setMode(CLOCKS, current_clocks);
+}
+
+void Menu::clocks_task(arg_t self)
+{
+    Menu * m = (Menu *) self;
+    if (m->machine != CLOCKS && m->fading == IN )
+    {
+        ma_clear_screen();
+        ma_buffer_flush();
+        return;
+    }
+    if (m->render_clocks == DAY)
+        ma_time_loop(1);
+    else
+        ma_time_loop(0);
 }
 
 void Menu::Play(void * self)
@@ -68,6 +101,10 @@ void Menu::Play(void * self)
     button |= (palReadPad(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN)^1) << 1;
     button |= (palReadPad(BUTTON_ENTER_PORT,BUTTON_ENTER_PIN)^1) << 2;
 
+    //dump buttons when fading
+    if(m->fade.IsRegistered())
+        button = 0;
+
     uint8_t b = (m->button_old ^ 0b111) & button;
     m->button_old = button;
 
@@ -79,7 +116,7 @@ void Menu::Play(void * self)
         if (m->saving_timeout++ > 30)
         {
             m->saving_timeout = 0;
-            m->machine = CLOCKS;
+            m->setMode(CLOCKS);
         }
 
     }
@@ -87,19 +124,20 @@ void Menu::Play(void * self)
     {
         //process menu
         matrix.enable(true);
+        m->clocks.Unregister();
         m->processMenu(button,b);
     }
     else if (m->machine == CLOCKS)
     //process clock itself
     {
-        //matrix.put("Hodiny");
-        //matrix.enable(false);
-        //ma_time_loop(1);
-        char buffer[20];
-        rtc_time_t t;
-        rtc_control_GetTime(&t);
-        piris::chsprintf(buffer,"%2d:%.2d:%.2d", t.hours,t.minutes,t.seconds );
-        matrix.put(buffer, NULL);
+        matrix.enable(false);
+
+        if (!m->clocks.IsRegistered())
+        {
+            m->clocks.Register();
+        }
+
+        //clocks_task(m);
     }
 
     //escape from menu or enter to menu
@@ -112,14 +150,15 @@ void Menu::Play(void * self)
             m->counter = 0;
             if (m->machine == CLOCKS)
             {
-                m->machine = MENU;
+                //m->machine = MENU;
+                m->setMode(MENU);
+
+                //fill components data from config structure
+                //copy configuration to temporary struct
+                memcpy (&(m->configuration_temp), &global_configuration, sizeof(configuration_t));
+                m->fillComponents(&(m->configuration_temp));
             }
             else if (m->machine == MENU)
-            {
-                m->machine = CLOCKS;
-            }
-
-            if (m->machine == CLOCKS)
             {
                 //save temporary configuration to working configuration if changed and save to EEPROM
                 //print changes saved
@@ -130,21 +169,12 @@ void Menu::Play(void * self)
                 {
                     memcpy(&global_configuration, &(m->configuration_temp),sizeof(configuration_t));
                     config_save();
-                    m->machine = SAVING;
-                    //save
+                    m->setMode(SAVING);
                 }
                 else
                 {
-                    //do nothing
+                    m->setMode(CLOCKS);
                 }
-
-            }
-            else if(m->machine == MENU)
-            {
-                //fill components data from config structure
-                //copy configuration to temporary struct
-                memcpy (&(m->configuration_temp), &global_configuration, sizeof(configuration_t));
-                m->fillComponents(&(m->configuration_temp));
             }
         }
     }
@@ -160,6 +190,8 @@ void Menu::Play(void * self)
         m->screen_active_edge = m->screen_active && !m->screen_active_old;
         m->screen_active_old = m->screen_active;
     }
+
+    m->pwm_control();
 }
 
 void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
@@ -224,13 +256,131 @@ void Menu::processMenu(uint8_t button, uint8_t button_rising_edge)
     {
         screen_active = false;
         current->selected = false;
-        machine = CLOCKS;
+        setMode(CLOCKS);
         timeout = 0;
     }
     //reset timeout timer if user does something
     if (button_rising_edge)
         timeout = 0;
 }
+
+void Menu::setMode(state_t mode, clocks_t clocks)
+{
+    //if switched clock mode fade out/in
+    if (clocks != current_clocks && clocks != INVALID)
+    {
+        current_clocks = clocks;
+        old_state = (state_t)0xff;
+    }
+
+    if (old_state != mode)
+    {
+        old_state = mode;
+        fade.Register();
+        fading_stage = 0;
+    }
+}
+
+void Menu::pwm_control()
+{
+    //start from zero bright - fixed in constructor
+    //read values from configuration
+    clocks_t c = getClockMode();
+
+    //select day/night pwm brightness and day/night clocks mode
+
+    if (c == DAY)
+        brightness_new = global_configuration.maxLuminance;
+    else if (c == NIGHT)
+        brightness_new = global_configuration.minLuminance;
+
+    if (c != current_clocks && machine == CLOCKS)
+    {
+        setMode(CLOCKS ,c );
+    }
+
+}
+
+Menu::clocks_t Menu::getClockMode()
+{
+    clocks_t mode = current_clocks;
+    if (global_configuration.switch_type == SWITCH_TYPE_TIME)
+    {
+        rtc_time_t t;
+        uint32_t secs_d,secs_n, secs;
+        secs_d = global_configuration.toDay.hours * 60 + global_configuration.toDay.minutes ;
+        secs_n = global_configuration.toNight.hours * 60 + global_configuration.toNight.minutes ;
+        rtc_control_GetTime(&t);
+        secs = t.secs / 60;
+        if (secs >= secs_d)
+        {
+            mode = DAY;
+
+            if(secs >= secs_n)
+            {
+                mode = NIGHT;
+            }
+        }
+    }
+    else if (global_configuration.switch_type == SWITCH_TYPE_PHOTO)
+    {
+        // todo read value from adc
+        uint32_t photo = 0;
+
+        if (photo > global_configuration.photoDay)
+        {
+            mode = DAY;
+        }
+        else if (photo < global_configuration.photoNight)
+        {
+            mode = NIGHT;
+        }
+    }
+
+    return mode;
+}
+
+void Menu::fade_cb(arg_t self)
+{
+    Menu * m = (Menu  *) self;
+    m->fade_cb();
+}
+
+void Menu::fade_cb()
+{
+    uint16_t  b = brightness;
+    uint16_t  c = brightness_new;
+    fading_stage++;
+
+
+    if (fading_stage < FADE_CONST)
+    {
+        //fadeout
+        ma_set_brightness((FADE_CONST*b - b *  fading_stage) / FADE_CONST);
+        fading = OUT;
+
+    }
+    else if (fading_stage > FADE_CONST && fading_stage < 2*FADE_CONST)
+    {
+        //change machine
+        machine = old_state;
+        render_clocks = current_clocks;
+        //fade in
+        ma_set_brightness(c * (fading_stage - FADE_CONST) /FADE_CONST);
+        fading = IN;
+
+    }
+    else if (fading_stage > 2*FADE_CONST)
+    {
+        //stop
+        ma_set_brightness(c);
+        brightness = brightness_new;
+        fading_stage = 0;
+        fade.Unregister();
+        fading = FINISHED;
+    }
+}
+
 
 void Menu::fillComponents(const configuration_t *c)
 {

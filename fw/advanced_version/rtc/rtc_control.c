@@ -14,10 +14,12 @@ void rtc_control_GetTime(rtc_time_t * in)
     rtcSTM32GetSecMsec(&RTCD1, &tv_sec, &tv_msec);
 
     uint32_t secs = tv_sec % (3600 * 24);
+    in->secs = secs;
     in->hours = secs / 3600 ;
     secs = secs % 3600;
     in->minutes = secs / 60;
     in->seconds = secs % 60;
+
 }
 
 void rtc_control_SetTime(const rtc_time_t * out)

@@ -23,7 +23,7 @@
 #define DISPLAY_HEIGHT 16
 
 //x coordination offset for nighttime
-#define NIGHT_OFFSET 15
+#define NIGHT_OFFSET 6
 
 #define ma_animated_character_animation(c,_animation) {if (c->animation != _animation) \
     {c->animation = _animation; c->counter = 16;}}
@@ -59,7 +59,7 @@ static void ma_putchar_struct(const animated_character_t * c);
 static uint16_t b2;
 void ma_set_brightness(uint16_t b)
 {
-	brightness = b;
+    matrix_pwm_set_period(b);
 }
 
 inline uint16_t ma_brightness(void)
@@ -124,37 +124,41 @@ void ma_time_loop(uint8_t day)
 	{
 		for (i = 0; i < 6; i++)
 		{
-            c->font = &piris::PFont::sans16;
-            c->y = 0;
-            c->x = 14 * i + (!(i & 1)) * 3 + 10;
-
-            //c->x = 14 * i;
-
             c->brightness = 7;
-
 			if (i == C_SECONDS_ONES)
 			{
                 ma_animated_character_animation(c, FADE);
-                c->font = &terminus_bold;
+                c->font = &piris::PFont::terminus12;
+                c->x = 0;
+                c->y = 4;
 			}
             else if (i == C_SECONDS_TENS)
 			{
                 c->font = &piris::PFont::terminus12;
                 ma_animated_character_animation(c, SLIDE_DOWN);
+                c->x = 6;
+                c->y = 4;
 			}
             else
             {
+                c->font = &terminus_bold;
+                c->y = 0;
+
+                uint8_t pos;
+                if (i == C_MINUTES_ONES || i == C_MINUTES_TENS)
+                    pos = 14 + ((i - 2) & 1) * c->font->width();
+                else if (i == C_HOURS_ONES || i == C_HOURS_TENS)
+                    pos = 18 + ((i & 1) + 2) * c->font->width();
+
+                c->x = pos;
                 ma_animated_character_animation(c, SLIDE_DOWN);
             }
             ma_putchar_animated(c++);
 		}
 		temp = ':';
-        ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, 24 + 2, 0, &piris::PFont::terminus16,
-				7);
-        ma_setup_animated_character(C_DOUBLE_DOT2, FADE, temp, 54 + 2, 0, &piris::PFont::terminus16,
+        ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, 30 + 2, 0, &piris::PFont::terminus16,
 				7);
         ma_putchar_animated_number(C_DOUBLE_DOT1);
-        ma_putchar_animated_number(C_DOUBLE_DOT2);
 	}
 	else
 	{
@@ -164,11 +168,11 @@ void ma_time_loop(uint8_t day)
 		{
 			//c->animation = FADE;
 			ma_animated_character_animation(c, FADE);
-            c->font = &piris::PFont::terminus16;
-			c->y = 1;
+            c->font = &terminus_bold;
+            c->y = 0;
 			if (i > 1)
 				temp = 8;
-			c->x = temp + (14 * i) + NIGHT_OFFSET;
+            c->x = temp + (c->font->width() * i) + NIGHT_OFFSET;
 
 			c->brightness = 7;
 			ma_putchar_animated(c++);
@@ -180,8 +184,8 @@ void ma_time_loop(uint8_t day)
 		else
 			temp = ' ';
 
-		ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, NIGHT_OFFSET+24,
-                0, &piris::PFont::terminus16, 7);
+        ma_setup_animated_character(C_DOUBLE_DOT1, FADE, temp, NIGHT_OFFSET+18,
+                0, &terminus_bold, 7);
 		ma_putchar_animated_number(C_DOUBLE_DOT1);
 	}
     ma_buffer_flush();
@@ -198,60 +202,6 @@ void ma_select_function(function_t f)
 
 }
 
-void ma_cb(arg_t b)
-{
-	(void) b;
-    static function_t old_f;
-	static uint16_t work_bright = 0;
-
-	//static uint16_t brightness = 200;
-	static uint16_t brightness_backup;
-
-#define BRIGHTNESS_STEP 4
-
-	if (mode_change_sequence == 0)
-	{
-		//slow fadeout and fade in
-		//fade out
-		brightness_backup = brightness;
-		b2 = 0;
-		mode_change_sequence = 1;
-	}
-	else if (mode_change_sequence == 1 && work_bright < 10)
-	{
-		//fade in
-		old_f = func;
-		b2 = brightness_backup;
-		mode_change_sequence = 2;
-	}
-
-	if (work_bright != brightness && mode_change_sequence == 2)
-	{
-		//bright change from api
-		if (work_bright > brightness)
-			work_bright -= BRIGHTNESS_STEP;
-		if (work_bright < brightness)
-			work_bright += BRIGHTNESS_STEP;
-	}
-	else if (work_bright != b2)
-	{
-		//bright change from - changing mode fade
-		if (work_bright > b2)
-			work_bright -= BRIGHTNESS_STEP;
-		if (work_bright < brightness)
-			work_bright += b2;
-	}
-
-	matrix_pwm_set_period(work_bright);
-	ma_clear_screen();
-
-	if (old_f == DAY_TIME)
-		ma_time_loop(1);
-	else if (old_f == NIGHT_TIME)
-		ma_time_loop(0);
-
-    ma_buffer_flush();
-}
 
 void ma_buffer_flush()
 {
@@ -260,10 +210,6 @@ void ma_buffer_flush()
 
 void ma_init(void)
 {
-    //static delay_t d;
-    //shFillStruct(&d, ma_cb, NULL, MS2ST(20), PERIODIC);
-    //shRegisterStruct(&d);
-
     animated_character_t * c = time_c;
 	int i;
 	for (i = 0; i < ANIMATED_CHARS_COUNT; i++)
