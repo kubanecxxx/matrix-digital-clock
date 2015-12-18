@@ -290,14 +290,24 @@ void Menu::pwm_control()
     //select day/night pwm brightness and day/night clocks mode
 
     if (c == DAY)
-        brightness_new = global_configuration.maxLuminance;
+        brightness_new = global_configuration.maxLuminance * 100;
     else if (c == NIGHT)
-        brightness_new = global_configuration.minLuminance;
+        brightness_new = global_configuration.minLuminance * 100;
 
     if (c != current_clocks && machine == CLOCKS)
     {
         setMode(CLOCKS ,c );
     }
+
+    if (current == &luminance_max && screen_active)
+    {
+        ma_set_brightness(luminance_max.number * 100);
+    }
+    else if (current == &luminance_min && screen_active)
+    {
+        ma_set_brightness(luminance_min.number * 100);
+    }
+
 
 }
 

@@ -28,7 +28,7 @@ menu/print.cpp
 
 rtc/rtc_control.c
 wifi/wifi.c
-
+flash/stm32f10x_flash.c
 
 )
 
@@ -52,6 +52,8 @@ menu/print.h
 
 rtc/rtc_control.h
 wifi/wifi.h
+
+flash/stm32f10x_flash.h
 )
 
 set (OPTIMIZED_SOURCES
@@ -68,6 +70,7 @@ menu
 wifi
 dcf
 rtc
+flash
 )
 
 #set (LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32F100xB.ld")
