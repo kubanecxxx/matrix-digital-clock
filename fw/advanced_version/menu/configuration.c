@@ -96,11 +96,11 @@ void Write(uint32_t where, const void * datas,  uint32_t size)
 {
     FLASH_Unlock();
     uint16_t * data = (uint16_t *)datas;
-    void * temp = (void*)where;
 
     size = (size + 1) / 2;
+    uint32_t i;
 
-    for (uint32_t i = 0 ; i < size ; i++)
+    for (i = 0 ; i < size ; i++)
     {
         if (FLASH_ProgramHalfWord(where,*data) != FLASH_COMPLETE)
         {
@@ -110,6 +110,5 @@ void Write(uint32_t where, const void * datas,  uint32_t size)
         where += 2;
     }
 
-    return temp;
     FLASH_Lock();
 }

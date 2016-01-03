@@ -12,10 +12,6 @@ main.cpp
 board_f100/board.c
 matrix_driver/matrix_abstraction.cpp
 
-#fonts/sans16.c
-#fonts/terminus16.c
-#fonts/terminus12.c
-#fonts/pfont.cpp
 fonts/terminus16_bold.c
 fonts/terminus12_bold.c
 
@@ -77,13 +73,14 @@ flash
 
 set (MAIN_STACK_SIZE 0x400)
 set (PROCESS_STACK_SIZE 0x400)
+set (OPTIMIZE_RTOS 1)
 
 set (GLOBAL_FLAGS
 "-O0  -ggdb "
 )
 
 set (OPTIMIZED_FLAGS
-"-O2"
+"-Os"
 )
 
 set (CFLAGS
@@ -109,18 +106,14 @@ set (RAM_SIZE "8k")
 
 set (TOOLCHAIN "arm-none-eabi")
 
-include (${CHIBIOS_DIR}/cmakeRules.txt)
+include (${CHIBIOS_DIR}/CMakeLists.txt)
 
 set (PROJECT_DIRECTORY ${CMAKE_SOURCE_DIR}/../..)
 
 add_subdirectory(${PROJECT_DIRECTORY}/piris/framework ${CMAKE_CURRENT_BINARY_DIR}/piris)
-add_subdirectory("${PROJECT_DIRECTORY}/library" "${CMAKE_CURRENT_BINARY_DIR}/library")
+target_link_libraries(${PROJECT_NAME} piris)
 
-add_executable(${PROJECT_NAME}
-$<TARGET_OBJECTS:ChibiOS_hal>
-$<TARGET_OBJECTS:ChibiOS_rt>
-$<TARGET_OBJECTS:ChibiOS_port>
-$<TARGET_OBJECTS:user_code>
-$<TARGET_OBJECTS:piris>
-$<TARGET_OBJECTS:library>
-)
+set (LIBRARY_MODULES scheduler)
+add_subdirectory("/home/kubanec/workspace/library" "${CMAKE_CURRENT_BINARY_DIR}/library")
+target_link_libraries(${PROJECT_NAME} library)
+
