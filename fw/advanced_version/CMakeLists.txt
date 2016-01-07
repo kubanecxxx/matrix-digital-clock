@@ -23,7 +23,7 @@ menu/crc8.c
 menu/print.cpp
 
 rtc/rtc_control.c
-wifi/wifi.c
+wifi/wifi.cpp
 flash/stm32f10x_flash.c
 
 )
@@ -57,6 +57,7 @@ matrix_driver/matrix_driver.c
 )
 
 include_directories(
+../../../../bootloader/boot
 board_f100
 )
 
@@ -67,7 +68,11 @@ wifi
 dcf
 rtc
 flash
+
 )
+
+set (USER_PROGRAM_START 0x08002800)
+set (USE_BOOTLOADER 0)
 
 #set (LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32F100xB.ld")
 
@@ -80,7 +85,7 @@ set (GLOBAL_FLAGS
 )
 
 set (OPTIMIZED_FLAGS
-"-Os"
+"-O2"
 )
 
 set (CFLAGS
@@ -94,10 +99,11 @@ set (CPPFLAGS
 #family or chip
 set (CHIP "STM32F100C8")
 #set (CHIP "STM32F407VG")
-# chibiOS stable v3.0.x branch commit ed8937f718ace39051768bb45c66a195b48270b3
+#chibios from https://github.com/kubanecxxx/chibios_fork commit hash
+#4e1e344475204f1f255eb6fe78c55527988e502a
 set (CHIBIOS_DIR "/home/kubanec/workspaces/chibios_3stable")
 if (NOT EXISTS ${CHIBIOS_DIR})
-	set (CHIBIOS_DIR "/home/kuba/chibi/ChibiOS")
+	set (CHIBIOS_DIR "/home/kuba/chibi/chibios_fork")
 endif()
 #set (BOARD "ST_STM32F4_DISCOVERY")
 
@@ -106,14 +112,10 @@ set (RAM_SIZE "8k")
 
 set (TOOLCHAIN "arm-none-eabi")
 
+
+set(USE_COMMON_LIBRARY 1)
+set(LIBRARY_MODULES esp crc scheduler)
+
+set(USE_PIRIS 1)
+
 include (${CHIBIOS_DIR}/CMakeLists.txt)
-
-set (PROJECT_DIRECTORY ${CMAKE_SOURCE_DIR}/../..)
-
-add_subdirectory(${PROJECT_DIRECTORY}/piris/framework ${CMAKE_CURRENT_BINARY_DIR}/piris)
-target_link_libraries(${PROJECT_NAME} piris)
-
-set (LIBRARY_MODULES scheduler)
-add_subdirectory("/home/kubanec/workspace/library" "${CMAKE_CURRENT_BINARY_DIR}/library")
-target_link_libraries(${PROJECT_NAME} library)
-

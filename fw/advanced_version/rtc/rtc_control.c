@@ -38,6 +38,7 @@ void rtc_control_Init(void)
     else if (global_configuration.source == SOURCE_WIFI)
     {
         //start wifi module
+        wifi_Init();
 
     }
     else if (global_configuration.source == SOURCE_DCF)
@@ -52,7 +53,10 @@ void rtc_control_Init(void)
 
 void rtc_control_task(arg_t a)
 {
-    uint8_t source = *(uint8_t *) a;
+    uint32_t source = (uint32_t ) a;
+    rtc_time_t time;
+    uint8_t ok;
+
     //auto refresh time from DCF/Manual/wifi
 
     if (source == SOURCE_MANUAL)
@@ -72,6 +76,9 @@ void rtc_control_task(arg_t a)
     {
         //synchronize every 2am and right after startup
         //set rtc time when wifi is ready
+        ok = wifi_getTime(&time);
+        if (ok)
+            rtc_control_SetTime(&time);
     }
 
 

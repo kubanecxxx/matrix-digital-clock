@@ -19,7 +19,6 @@
 #include "scheduler.hpp"
 #include "matrix_driver.h"
 #include "matrix_abstraction.h"
-
 #include "menu.h"
 #include "rtc_control.h"
 

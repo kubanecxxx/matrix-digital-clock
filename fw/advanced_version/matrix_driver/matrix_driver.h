@@ -57,6 +57,7 @@ void matrix_pwm_set_period(uint16_t percent);
 void matrix_progress(uint8_t percent);
 void matrix_dcf_led(uint8_t state);
 
+
 #ifdef __cplusplus
 }
 #endif

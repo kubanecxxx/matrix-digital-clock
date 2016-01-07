@@ -15,6 +15,7 @@
 #include <string.h>
 #include "pfont.h"
 #include "rtc_control.h"
+#include "wifi.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -202,9 +203,13 @@ void ma_select_function(function_t f)
 
 }
 
-
 void ma_buffer_flush()
 {
+    //connected to the internet
+    ma_put_pixel(wifi_internetReady(), 0,15,0);
+    ma_put_pixel(wifi_internetReady(), 0,15,1);
+    ma_put_pixel(wifi_internetReady(), 0,15,2);
+
     matrix_put_bitmap((uint16_t *) buffer);
 }
 
