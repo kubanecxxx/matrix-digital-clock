@@ -23,6 +23,7 @@ static esp_config_t cfg =
 };
 
 static void parseTime(const char * text);
+static void send_ntp_request(uint8_t connection_id);
 
 static const SerialConfig ser_cfg =
 {
@@ -39,7 +40,7 @@ static THD_FUNCTION(Thread1, arg)
     uint8_t len;
     uint8_t id;
     uint8_t k;
-    uint8_t listen;
+    uint8_t listen = 0;
     systime_t old=0xfffff,now;
     systime_t lis;
 
@@ -55,68 +56,82 @@ static THD_FUNCTION(Thread1, arg)
 
         if (ok)
         {
-            len = esp_decode_ipd(buffer,&id);
-
-            if (len)
-            {
-                if (id == 4 && contains(buffer,"Date") && listen)
-                {
-
-                    parseTime(buffer);
-                    if (time_ready)
-                        listen = 1;
-                }
-                esp_basic_commands(buffer,len,id);
-            }
 
 
             now = chVTGetSystemTime();
             if (listen && now - lis > S2ST(5))
             {
-                old = S2ST(3601)+now;
+                old = S2ST(121)+now;
                 lis = chVTGetSystemTime();
                 failed++;
             }
 
             //synchronize time from internet
-            if (((now - old > S2ST(60)) && ok && now > S2ST(10)))
+            if (((now - old > S2ST(120)) && ok && now > S2ST(10)))
             {
                 old = now;
                 listen = 1;
-                rtc_time_t t ;
-                t.hours = 5;
-                t.minutes = 0;
-                t.seconds = 0;
-
-                k = esp_run_command("AT+CIPSTART=4,\"TCP\",\"www.timeapi.org\",80",500,buffer,sizeof(buffer));
+                k = esp_run_command("AT+CIPCLOSE=4", 1000,buffer,sizeof(buffer));
+                k = esp_run_command("AT+CIPSTART=4,\"UDP\",\"tak.cesnet.cz\",123",1000,buffer,sizeof(buffer));
                 if (k)
                 {
-
-                    rtc_control_SetTime(&t);
-                    lis = chVTGetSystemTime();
-                    esp_write_tcp("GET\r\n",5,4);
+                    send_ntp_request(4);
+                    //wait for data
+                    chThdSleepMilliseconds(200);
+                }
+            }
+            len = esp_decode_ipd(buffer,&id);
+            if (len)
+            {
+                if (id == 4 && len ==48)
+                {
+                    k = esp_run_command("AT+CIPCLOSE=4", 1000,buffer,sizeof(buffer));
+                    parseTime(buffer);
+                    if (time_ready)
+                        listen = 0;
+                }
+                else
+                {
+                   esp_basic_commands(buffer,len,id);
                 }
             }
         }
     }
 }
 
-void parseTime(const char *text)
+void send_ntp_request(uint8_t connection_id)
 {
-    const char * date = contains(text,"Date:");
-    date += 10;
-    date = strchr(date,':');
-    uint8_t h,m,s;
+    char req[48];
+    memset(req,0,sizeof(req));
+    req[0] = 0b11100011;
+    req[1] = 0;
+    req[2] = 6;
+    req[3] = 0xec;
 
-    if (!date)
-        return;
+    req[12] = 49;
+    req[13] = 0x4E;
+    req[14] = 49;
+    req[15] = 52;
 
-    date -= 2;
-    h = atoi10(date) + 1;
-    date += 3;
-    m = atoi10(date );
-    date += 3;
-    s = atoi10(date);
+    esp_write_udp(req,sizeof(req),connection_id);
+}
+
+void parseTime(const char *data)
+{
+    uint32_t tme;
+    tme = data[40] << 24;
+    tme |= data[41] << 16;
+    tme |= data[42] << 8;
+    tme |= data[43] ;
+
+    uint16_t h,m,s;
+
+    //since 1.1.1900 to 1.1.1970
+    tme = tme - 2208988800;
+    h = (tme % 86400) / 3600 ;
+    h = h + 1;
+    m = (tme % 3600) / 60;
+    s = tme % 60;
 
     internetTime.hours = h;
     internetTime.minutes = m;
