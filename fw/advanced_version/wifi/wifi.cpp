@@ -125,6 +125,7 @@ void parseTime(const char *data)
     tme |= data[43] ;
 
     uint16_t h,m,s;
+    uint16_t mon, year, day;
 
     //since 1.1.1900 to 1.1.1970
     tme = tme - 2208988800;
@@ -133,11 +134,27 @@ void parseTime(const char *data)
     m = (tme % 3600) / 60;
     s = tme % 60;
 
+    mon = (tme % 31556926) / 2629743 + 1;
+    year = tme / 31556926 + 1970 ;
+    day = ((tme % 31556926) %  2629743) / 86400 + 1;
+
+
+    uint16_t start = 31 - ((4 +5 * year / 4) % 7);
+    uint16_t stop = 31 - ((1 + 5 * year / 4 ) % 7);
+
+    if ((mon == 3 && start >= day ) || ( mon == 10 && day < stop ) || (mon > 3 && mon < 10))
+    {
+        h++;
+    }
+
+
     internetTime.hours = h;
     internetTime.minutes = m;
     internetTime.seconds = s;
     time_ready = 1;
 }
+
+
 
 
 void wifi_Init(void)
