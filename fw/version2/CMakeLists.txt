@@ -71,7 +71,7 @@ flash
 
 )
 
-set (USER_PROGRAM_START 0x08002800)
+set (USER_PROGRAM_START 0x08003800)
 set (USE_BOOTLOADER 0)
 
 #set (LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32F100xB.ld")
@@ -100,7 +100,7 @@ set (CPPFLAGS
 set (CHIP "STM32F100C8")
 #set (CHIP "STM32F407VG")
 #chibios from https://github.com/kubanecxxx/chibios_fork commit hash
-#4e1e344475204f1f255eb6fe78c55527988e502a
+#8d6a73b7e8d9132c4caf8eb7f85e7dff6aebc2c3
 set (CHIBIOS_DIR "/home/kubanec/workspaces/chibios_3stable")
 if (NOT EXISTS ${CHIBIOS_DIR})
 	set (CHIBIOS_DIR "/home/kuba/chibi/chibios_fork")
