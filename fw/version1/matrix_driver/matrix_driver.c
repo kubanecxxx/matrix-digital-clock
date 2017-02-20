@@ -25,6 +25,9 @@ static const SPIConfig spi =
 spi_cb, NULL, 0, 0 // | SPI_CR1_DFF
 		};
 
+static uint8_t first_run = 1;
+static volatile uint8_t about_to_end = 0;
+
 static uint16_t display_data[MATRIX_ARRAY_COLS][MATRIX_ROWS][MATRIX_BRIGHT];
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +81,12 @@ void matrix_pwm_set_period(uint16_t percent)
 void matrix_start()
 {
 	//config gpio
+	if (!first_run)
+	{
+		gptStartContinuous(c->timer, 80);
+		return;
+	}
+
 	int i;
 	for (i = 0; i < 16; i++)
 	{
@@ -107,6 +116,50 @@ void matrix_start()
 	palSetPadMode(MATRIX_DATA_PORT, MATRIX_DATA_PIN,
 			PAL_MODE_STM32_ALTERNATE_PUSHPULL);
 	spiStart(c->spi, &spi);
+
+	first_run = 0;
+}
+
+void matrix_stop()
+{
+	int i, j, k;
+	for (i = 0; i < MATRIX_ARRAY_COLS; i++)
+	{
+		for (j = 0; j < MATRIX_ROWS; j++)
+		{
+			for (k = 0; k < MATRIX_BRIGHT; k++)
+				display_data[i][j][k] = (i < 5);
+		}
+	}
+
+	about_to_end = 1;
+	chThdSleepMilliseconds(1);
+	while (about_to_end)
+	{
+		chThdSleepMilliseconds(1);
+	}
+
+	for (i = 0; i < 16; i++)
+	{
+		palClearPad(c->gpio[i].port, c->gpio[i ].pin);
+
+	}
+}
+
+void matrix_dcf_led(uint8_t state)
+{
+	palWritePad(c->gpio[0].port, c->gpio[0].pin, state);
+}
+
+void matrix_progress(uint8_t percent)
+{
+	uint8_t i;
+	int16_t p = percent;
+	for (i = 0; i < 10; i++)
+	{
+		palWritePad(c->gpio[i + 3].port, c->gpio[i + 3].pin, p > 0);
+		p -= 6;
+	}
 }
 
 void matrix_clear_screen()
@@ -160,6 +213,7 @@ void interrupt(void)
 	int i;
 
 	static uint8_t brigh_count = 0;
+	static uint8_t finish = 0;
 
 	uint16_t d;
 	uint16_t r;
@@ -175,6 +229,21 @@ void interrupt(void)
 		{
 			brigh_count = 0;
 
+		}
+	}
+
+	if (current_row == 0 && brigh_count == 0 && about_to_end == 1)
+	{
+		if (finish == 1)
+		{
+			finish = 0;
+			about_to_end = 0;
+			gptStopTimerI(c->timer);
+			return;
+		}
+		else
+		{
+			finish = 1;
 		}
 	}
 

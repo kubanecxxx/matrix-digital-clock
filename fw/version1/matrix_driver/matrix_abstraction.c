@@ -65,6 +65,24 @@ inline uint16_t ma_brightness(void)
 	return brightness;
 }
 
+inline void ma_dcf_led(uint8_t state)
+{
+	matrix_dcf_led(state);
+}
+
+inline void ma_dcf_progress(uint8_t percent)
+{
+	matrix_progress(percent);
+}
+
+void ma_disable(uint8_t disable)
+{
+	if (disable)
+		matrix_stop();
+	else
+		matrix_start();
+}
+
 void ma_time_loop(uint8_t day)
 {
 	//RTCTime t;

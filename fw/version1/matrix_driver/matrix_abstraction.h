@@ -78,6 +78,11 @@ animated_character_t * ma_get_character(uint8_t index);
 void ma_set_brightness(uint16_t percent);
 uint16_t ma_brightness(void);
 
+
+void ma_dcf_led(uint8_t state);
+void ma_dcf_progress(uint8_t percent);
+void ma_disable(uint8_t disable);
+
 #ifdef __cplusplus
 }
 #endif

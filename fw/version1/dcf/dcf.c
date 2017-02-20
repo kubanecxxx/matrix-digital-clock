@@ -63,6 +63,7 @@ void dcf_task(arg_t c)
 	// machine start
 	if (machine == 0)
 	{
+		ma_disable(1);
 		gptStartContinuous(timer, 100);
 		machine++;
 	}
@@ -75,6 +76,7 @@ void dcf_task(arg_t c)
 			shUnregisterStruct(&del);
 			gptStopTimer(timer);
 			dcf_decode();
+			ma_disable(0);
 			rdy = 1;
 		}
 	}
@@ -94,7 +96,8 @@ void dcf_play(void)
 {
 	rdy = 0;
 	time_valid = 0;
-	ma_set_brightness(0);
+	ma_set_brightness(40);
+
 	shRegisterStruct(&del);
 }
 
@@ -157,6 +160,7 @@ void dcf_decode(void)
 		time = minutes * 60;
 		time += hours * 3600;
 		time_valid = 1;
+
 		//rtc.tv_sec += day * 86400;
 		//rtc.tv_sec += month * 2629743;
 		//rtc.tv_sec += year * 31556926;
@@ -177,6 +181,7 @@ void gpt_cb(GPTDriver * gpt)
 	free++;
 
 	in = palReadPad(DCF_PORT, DCF_PIN);
+	ma_dcf_led(in);
 
 	static int32_t seconds = -1;
 	static uint8_t ones;
@@ -213,6 +218,7 @@ void gpt_cb(GPTDriver * gpt)
 			input_counter++;
 			seconds += modulo;
 			secs++;
+			ma_dcf_progress(secs);
 			input_secs = ones;
 			//zero is automatic
 			if (ones > 75 && ones < 85)
