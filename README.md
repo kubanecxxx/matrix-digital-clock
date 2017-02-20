@@ -9,7 +9,14 @@ DIY clock with these features:
 
 Project page: https://hackaday.io/project/19949-led-matrix-clock
 
+Version 1 photo
+-----
 ![photo](photos/20150624_203145.jpg)
+
+There are actually two versions of this project
+- version 1 has 3 LED modules and firmware is much more stupid - no menu; just automatic DCF synchronization every midnight  **whole LED driver must be disabled because it inteferes the DCF radio**.
+- version 2 has only 2 LED modules and the firmware is much more enhanced - there is a basic button control and menu to setup wifi connection, time source, day lumination, night lumination......
+
 
 Hardware
 -----
